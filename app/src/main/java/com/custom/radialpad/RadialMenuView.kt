@@ -9,10 +9,11 @@ import android.view.MotionEvent
 import android.view.View
 import kotlin.math.*
 
-// Calque plein écran 100% passif (ne bouge jamais, ne se redimensionne jamais) qui dessine la roue
 class WheelRenderOverlayView(context: Context) : View(context) {
 
     var activeButton: RadialMenuView? = null
+    var centerScreenX: Float = 0f
+    var centerScreenY: Float = 0f
 
     private val paintFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val paintStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -32,27 +33,21 @@ class WheelRenderOverlayView(context: Context) : View(context) {
         val btn = activeButton ?: return
         if (!btn.isExpanded) return
 
-        // Coordonnées exactes du centre du bouton à l'écran
-        val loc = IntArray(2)
-        btn.getLocationOnScreen(loc)
         val myLoc = IntArray(2)
         getLocationOnScreen(myLoc)
 
-        val cx = (loc[0] - myLoc[0]) + btn.width / 2f
-        val cy = (loc[1] - myLoc[1]) + btn.height / 2f
+        val cx = centerScreenX - myLoc[0]
+        val cy = centerScreenY - myLoc[1]
         val baseRadius = btn.buttonSizePx / 2f
 
-        // 1. Dessin du 2e anneau externe (si activé)
         if (btn.config.enableOuterRing && btn.outerSlices.isNotEmpty()) {
             drawRing(canvas, btn, cx, cy, btn.innerRadiusPx, btn.outerRadiusPx, btn.outerSlices, ringId = 2)
         }
 
-        // 2. Dessin du 1er anneau interne
         if (btn.innerSlices.isNotEmpty()) {
             drawRing(canvas, btn, cx, cy, baseRadius, btn.innerRadiusPx, btn.innerSlices, ringId = 1)
         }
 
-        // 3. Rappel du centre par-dessus la jonction interne des tranches
         paintFill.color = btn.mainColor
         paintFill.alpha = (btn.alphaRatio * 255).toInt()
         canvas.drawCircle(cx, cy, baseRadius, paintFill)
@@ -99,13 +94,13 @@ class WheelRenderOverlayView(context: Context) : View(context) {
     }
 }
 
-// Bouton flottant qui ne change JAMAIS de taille ni de position quand on clique dessus
 class RadialMenuView(
     context: Context,
     var config: RadialButtonConfig,
     private val wheelRenderer: WheelRenderOverlayView,
     private val onKeySelected: (String) -> Unit,
-    private val onMoveOverlay: (Int, Int) -> Unit
+    private val onMoveOverlay: (Int, Int) -> Unit,
+    private val onMoveFinished: () -> Unit
 ) : View(context) {
 
     var innerSlices: List<KeySlice> = emptyList()
@@ -154,7 +149,6 @@ class RadialMenuView(
         try { mainColor = Color.parseColor(config.mainColor) } catch (_: Exception) {}
         try { accentColor = Color.parseColor(config.accentColor) } catch (_: Exception) {}
         invalidate()
-        wheelRenderer.invalidate()
     }
 
     private fun dpToEvenPx(dp: Int, density: Float): Int {
@@ -177,6 +171,9 @@ class RadialMenuView(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        // Quand la roue est déployée, c'est le calque WheelRenderOverlayView qui dessine tout (évite la double superposition / clignotement)
+        if (isExpanded) return
+
         val cx = width / 2f
         val cy = height / 2f
         val baseRadius = buttonSizePx / 2f
@@ -196,7 +193,6 @@ class RadialMenuView(
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 val now = System.currentTimeMillis()
-                // Ancre le centre géométrique réel du bouton sur l'écran (aucun décalage même si on tape sur le bord du bouton)
                 val loc = IntArray(2)
                 getLocationOnScreen(loc)
                 rawStartX = loc[0] + width / 2f
@@ -212,17 +208,21 @@ class RadialMenuView(
                     isMoveMode = true
                     isExpanded = false
                     wheelRenderer.activeButton = null
+                    wheelRenderer.visibility = View.GONE
                     rawStartX = event.rawX
                     rawStartY = event.rawY
                     vibrate(45)
                 } else {
                     isMoveMode = false
                     isExpanded = true
+                    wheelRenderer.centerScreenX = rawStartX
+                    wheelRenderer.centerScreenY = rawStartY
                     wheelRenderer.activeButton = this
+                    wheelRenderer.visibility = View.VISIBLE
+                    wheelRenderer.invalidate()
                 }
                 lastDownTime = now
                 invalidate()
-                wheelRenderer.invalidate()
                 return true
             }
 
@@ -285,6 +285,7 @@ class RadialMenuView(
                 if (isMoveMode) {
                     isMoveMode = false
                     vibrate(20)
+                    onMoveFinished()
                 } else if (isExpanded) {
                     val pressDuration = System.currentTimeMillis() - downTimestamp
                     val deadZone = buttonSizePx * 0.50f
@@ -308,10 +309,10 @@ class RadialMenuView(
                     quickFlickTriggered = false
                     if (wheelRenderer.activeButton == this) {
                         wheelRenderer.activeButton = null
+                        wheelRenderer.visibility = View.GONE
                     }
                 }
                 invalidate()
-                wheelRenderer.invalidate()
                 return true
             }
         }

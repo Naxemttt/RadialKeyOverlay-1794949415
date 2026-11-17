@@ -157,6 +157,24 @@ class MainActivity : AppCompatActivity() {
         refreshSpinnersAndFields()
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Synchronise les positions X/Y si l'utilisateur a déplacé les boutons sur l'écran pendant que l'app était en arrière-plan
+        syncPositionsFromDisk()
+    }
+
+    private fun syncPositionsFromDisk() {
+        val (_, diskProfiles) = ConfigManager.loadAll(this)
+        for (p in profiles) {
+            val diskP = diskProfiles.find { it.name == p.name } ?: continue
+            for (b in p.buttons) {
+                val diskB = diskP.buttons.find { it.id == b.id } ?: continue
+                b.x = diskB.x
+                b.y = diskB.y
+            }
+        }
+    }
+
     private fun simpleSeek(onChange: (Int) -> Unit) = object : SeekBar.OnSeekBarChangeListener {
         override fun onProgressChanged(s: SeekBar?, p: Int, b: Boolean) { onChange(p) }
         override fun onStartTrackingTouch(s: SeekBar?) {}
@@ -164,6 +182,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun saveCurrentFieldsToMemory() {
+        syncPositionsFromDisk()
         val p = profiles.getOrNull(activeProfileIdx) ?: return
         p.name = editProfileName.text.toString().ifBlank { "Profil" }
         p.shellCmd = editShellCmd.text.toString().ifBlank { "input keyevent %d" }
@@ -223,6 +242,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun pushLiveUpdate() {
+        syncPositionsFromDisk()
         ConfigManager.saveAll(this, activeProfileIdx, profiles)
         sendBroadcast(Intent("com.custom.radialpad.UPDATE_CONFIG").setPackage(packageName))
     }

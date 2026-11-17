@@ -8,6 +8,7 @@ import android.content.IntentFilter
 import android.graphics.PixelFormat
 import android.os.Build
 import android.view.Gravity
+import android.view.View
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 
@@ -70,8 +71,9 @@ class RadialAccessibilityService : AccessibilityService() {
         else
             @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE
 
-        // 1. Calque plein écran transparent aux touches (FLAG_NOT_TOUCHABLE) pour dessiner les roues sans jamais redimensionner les boutons
-        val renderView = WheelRenderOverlayView(this)
+        val renderView = WheelRenderOverlayView(this).apply {
+            visibility = View.GONE
+        }
         val renderParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -85,10 +87,7 @@ class RadialAccessibilityService : AccessibilityService() {
             gravity = Gravity.TOP or Gravity.START
             windowAnimations = 0
         }
-        windowManager.addView(renderView, renderParams)
-        wheelRenderOverlay = renderView
 
-        // 2. Petits boutons flottants fixes (aucun redimensionnement au clic = zéro saut visuel)
         activeProfile.buttons.forEach { btnConfig ->
             val btnSize = dpToEvenPx(btnConfig.buttonSizeDp)
             val params = WindowManager.LayoutParams(
@@ -120,7 +119,18 @@ class RadialAccessibilityService : AccessibilityService() {
                     params.x = btnConfig.x
                     params.y = btnConfig.y
                     windowManager.updateViewLayout(radialView, params)
-                    ConfigManager.saveAll(this, activeIdx, profiles)
+                },
+                onMoveFinished = {
+                    // Sauvegarde persistante des nouvelles coordonnées X/Y dès qu'on relâche le déplacement
+                    val (latestIdx, latestProfiles) = ConfigManager.loadAll(this)
+                    val targetBtn = latestProfiles.getOrNull(latestIdx)?.buttons?.find { it.id == btnConfig.id }
+                    if (targetBtn != null) {
+                        targetBtn.x = btnConfig.x
+                        targetBtn.y = btnConfig.y
+                        ConfigManager.saveAll(this, latestIdx, latestProfiles)
+                    } else {
+                        ConfigManager.saveAll(this, activeIdx, profiles)
+                    }
                 }
             )
 
@@ -128,6 +138,10 @@ class RadialAccessibilityService : AccessibilityService() {
             windowManager.addView(radialView, params)
             overlays.add(OverlayInstance(btnConfig, radialView, params))
         }
+
+        // Ajouté en dernier pour être dessiné au-dessus de tous les boutons quand activé
+        windowManager.addView(renderView, renderParams)
+        wheelRenderOverlay = renderView
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
