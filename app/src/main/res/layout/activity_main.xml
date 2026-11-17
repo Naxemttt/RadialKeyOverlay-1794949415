@@ -13,7 +13,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="RadialKey Overlay Pro v2.5"
+            android:text="RadialKey Overlay Pro v2.6"
             android:textColor="#FFFFFF"
             android:textSize="21sp"
             android:textStyle="bold"
@@ -38,7 +38,7 @@
                 android:text="2. Accessibilité" />
         </LinearLayout>
 
-        <!-- GESTION DES PROFILS -->
+        <!-- PROFIL -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -79,7 +79,7 @@
                 android:text="Suppr" />
         </LinearLayout>
 
-        <!-- GESTION DES BOUTONS DU PROFIL -->
+        <!-- BOUTON -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -120,36 +120,62 @@
                 android:text="Suppr" />
         </LinearLayout>
 
-        <!-- CONFIGURATION DES TOUCHES & ANNEAUX -->
+        <!-- ANNEAU 1 -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
-            android:text="Anneau 1 (Format Label:TOUCHE_CLAVIER) :"
+            android:text="Anneau 1 (Format Label:Touche ou sélecteur) :"
             android:textColor="#BBBBBB" />
 
-        <EditText
-            android:id="@+id/editInnerKeys"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="#FFFFFF"
-            android:hint="Ex: ⚡:F1, 🔥:F2, 🛡️:1, Sac:B, Monture:SHIFT+P" />
+            android:orientation="horizontal">
+            <EditText
+                android:id="@+id/editInnerKeys"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="#FFFFFF"
+                android:hint="Ex: ⚡:F1, 🔥:F2" />
+            <Button
+                android:id="@+id/btnPickInnerKeys"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="🎹 Clavier" />
+        </LinearLayout>
 
+        <!-- ANNEAU 2 -->
         <CheckBox
             android:id="@+id/chkOuterRing"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
+            android:layout_marginTop="8dp"
             android:text="Activer le 2e Anneau Externe"
             android:textColor="#FFFFFF" />
 
-        <EditText
-            android:id="@+id/editOuterKeys"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="#FFFFFF"
-            android:hint="Ex: S1:CTRL+1, S2:CTRL+2, Carte:M, ESC:ESC" />
+            android:orientation="horizontal">
+            <EditText
+                android:id="@+id/editOuterKeys"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="#FFFFFF"
+                android:hint="Ex: S1:CTRL+1, S2:ESC" />
+            <Button
+                android:id="@+id/btnPickOuterKeys"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="🎹 Clavier" />
+        </LinearLayout>
 
+        <!-- CLIC CENTRAL -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -157,20 +183,24 @@
             android:text="Action sur Clic Court au Centre :"
             android:textColor="#BBBBBB" />
 
-        <EditText
-            android:id="@+id/editCenterTapKey"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="#FFFFFF"
-            android:hint="Ex: SPACE, TAB ou ENTER" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Touches clavier reconnues : 0-9, A-Z, F1-F12, SPACE, ESC, TAB, ENTER, BACKSPACE, UP, DOWN, LEFT, RIGHT, SHIFT+..., CTRL+..."
-            android:textColor="#777777"
-            android:textSize="11sp" />
+            android:orientation="horizontal">
+            <EditText
+                android:id="@+id/editCenterTapKey"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="#FFFFFF"
+                android:hint="Ex: SPACE ou TAB" />
+            <Button
+                android:id="@+id/btnPickCenterKey"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="🎹 Clavier" />
+        </LinearLayout>
 
         <CheckBox
             android:id="@+id/chkQuickFlick"

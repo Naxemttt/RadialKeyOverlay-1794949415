@@ -76,9 +76,39 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
 
+        // Connexion des boutons 🎹 Clavier interactifs
+        findViewById<Button>(R.id.btnPickInnerKeys).setOnClickListener {
+            KeyPickerDialog(this, editInnerKeys.text.toString().trim()) { pickedKey ->
+                if (pickedKey.isNotBlank()) {
+                    val current = editInnerKeys.text.toString().trim()
+                    editInnerKeys.setText(if (current.isEmpty()) pickedKey else "$current, $pickedKey")
+                    saveCurrentFieldsToMemory()
+                    pushLiveUpdate()
+                }
+            }.show()
+        }
+
+        findViewById<Button>(R.id.btnPickOuterKeys).setOnClickListener {
+            KeyPickerDialog(this, editOuterKeys.text.toString().trim()) { pickedKey ->
+                if (pickedKey.isNotBlank()) {
+                    val current = editOuterKeys.text.toString().trim()
+                    editOuterKeys.setText(if (current.isEmpty()) pickedKey else "$current, $pickedKey")
+                    saveCurrentFieldsToMemory()
+                    pushLiveUpdate()
+                }
+            }.show()
+        }
+
+        findViewById<Button>(R.id.btnPickCenterKey).setOnClickListener {
+            KeyPickerDialog(this, editCenterTapKey.text.toString().trim()) { pickedKey ->
+                editCenterTapKey.setText(pickedKey)
+                saveCurrentFieldsToMemory()
+                pushLiveUpdate()
+            }.show()
+        }
+
         spinnerProfiles.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                // Bloque toute boucle infinie si la position n'a pas réellement changé
                 if (isUpdatingUi || position == activeProfileIdx) return
                 saveCurrentFieldsToMemory()
                 activeProfileIdx = position
@@ -143,7 +173,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Mise à jour en direct quand on lâche un curseur (permet de voir la taille/opacité directement dans l'app)
         seekButtonSize.setOnSeekBarChangeListener(liveSeek { txtButtonSize.text = "Taille bouton central : ${it.coerceAtLeast(30)} dp" })
         seekInnerRadius.setOnSeekBarChangeListener(liveSeek { txtInnerRadius.text = "Rayon Anneau 1 : ${it.coerceAtLeast(80)} dp" })
         seekOuterRadius.setOnSeekBarChangeListener(liveSeek { txtOuterRadius.text = "Rayon Anneau 2 (Externe) : ${it.coerceAtLeast(130)} dp" })
