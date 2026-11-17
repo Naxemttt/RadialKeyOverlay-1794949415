@@ -42,7 +42,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         val loaded = ConfigManager.loadAll(this)
-        activeProfileIdx = loaded.first
+        activeProfileIdx = loaded.first.coerceIn(0, loaded.second.size - 1)
         profiles = loaded.second
 
         spinnerProfiles = findViewById(R.id.spinnerProfiles)
@@ -112,7 +112,7 @@ class MainActivity : AppCompatActivity() {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 if (isUpdatingUi || position == activeProfileIdx) return
                 saveCurrentFieldsToMemory()
-                activeProfileIdx = position
+                activeProfileIdx = position.coerceIn(0, profiles.size - 1)
                 activeButtonIdx = 0
                 refreshSpinnersAndFields()
                 pushLiveUpdate()
@@ -122,7 +122,8 @@ class MainActivity : AppCompatActivity() {
 
         spinnerButtons.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                if (isUpdatingUi || position == activeButtonIdx) return
+                val p = profiles.getOrNull(activeProfileIdx) ?: return
+                if (isUpdatingUi || position == activeButtonIdx || position >= p.buttons.size) return
                 saveCurrentFieldsToMemory()
                 activeButtonIdx = position
                 populateButtonFields()
@@ -154,18 +155,18 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.btnAddButton).setOnClickListener {
             saveCurrentFieldsToMemory()
-            val p = profiles[activeProfileIdx]
+            val p = profiles.getOrNull(activeProfileIdx) ?: return@setOnClickListener
             val idx = p.buttons.size + 1
-            p.buttons.add(RadialButtonConfig(name = "Bouton $idx", x = 200 + (idx * 90), y = 500))
+            p.buttons.add(RadialButtonConfig(name = "Bouton $idx", x = 200 + (idx * 60), y = 400 + (idx * 60)))
             activeButtonIdx = p.buttons.size - 1
             refreshSpinnersAndFields()
             pushLiveUpdate()
         }
 
         findViewById<Button>(R.id.btnDelButton).setOnClickListener {
-            val p = profiles[activeProfileIdx]
+            val p = profiles.getOrNull(activeProfileIdx) ?: return@setOnClickListener
             if (p.buttons.size > 1) {
-                p.buttons.removeAt(activeButtonIdx)
+                p.buttons.removeAt(activeButtonIdx.coerceIn(0, p.buttons.size - 1))
                 activeButtonIdx = (activeButtonIdx - 1).coerceAtLeast(0)
                 refreshSpinnersAndFields()
                 pushLiveUpdate()
@@ -190,7 +191,7 @@ class MainActivity : AppCompatActivity() {
             saveCurrentFieldsToMemory()
             refreshSpinnersAndFields()
             pushLiveUpdate()
-            Toast.makeText(this, "Profil & Boutons appliqués en direct !", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Modifications enregistrées et appliquées !", Toast.LENGTH_SHORT).show()
         }
 
         refreshSpinnersAndFields()
@@ -252,15 +253,15 @@ class MainActivity : AppCompatActivity() {
         isUpdatingUi = true
         val pNames = profiles.map { it.name }
         spinnerProfiles.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, pNames)
-        spinnerProfiles.setSelection(activeProfileIdx, false)
+        spinnerProfiles.setSelection(activeProfileIdx.coerceIn(0, (profiles.size - 1).coerceAtLeast(0)), false)
 
-        val currentProfile = profiles[activeProfileIdx]
+        val currentProfile = profiles.getOrNull(activeProfileIdx) ?: profiles[0]
         editProfileName.setText(currentProfile.name)
         editShellCmd.setText(currentProfile.shellCmd)
 
         val bNames = currentProfile.buttons.map { it.name }
         spinnerButtons.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, bNames)
-        activeButtonIdx = activeButtonIdx.coerceIn(0, currentProfile.buttons.size - 1)
+        activeButtonIdx = activeButtonIdx.coerceIn(0, (currentProfile.buttons.size - 1).coerceAtLeast(0))
         spinnerButtons.setSelection(activeButtonIdx, false)
 
         populateButtonFields()
@@ -270,7 +271,9 @@ class MainActivity : AppCompatActivity() {
     private fun populateButtonFields() {
         val wasUpdating = isUpdatingUi
         isUpdatingUi = true
-        val b = profiles[activeProfileIdx].buttons[activeButtonIdx]
+        val p = profiles.getOrNull(activeProfileIdx) ?: profiles[0]
+        val b = p.buttons.getOrNull(activeButtonIdx) ?: p.buttons[0]
+
         editButtonName.setText(b.name)
         editCenterLabel.setText(b.centerLabel)
         editInnerKeys.setText(b.innerKeys)
