@@ -9,12 +9,103 @@ import android.view.MotionEvent
 import android.view.View
 import kotlin.math.*
 
+// Calque plein écran 100% passif (ne bouge jamais, ne se redimensionne jamais) qui dessine la roue
+class WheelRenderOverlayView(context: Context) : View(context) {
+
+    var activeButton: RadialMenuView? = null
+
+    private val paintFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val paintStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 4f
+        color = Color.WHITE
+    }
+    private val paintText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        textSize = 36f
+        textAlign = Paint.Align.CENTER
+        typeface = Typeface.DEFAULT_BOLD
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        val btn = activeButton ?: return
+        if (!btn.isExpanded) return
+
+        // Coordonnées exactes du centre du bouton à l'écran
+        val loc = IntArray(2)
+        btn.getLocationOnScreen(loc)
+        val myLoc = IntArray(2)
+        getLocationOnScreen(myLoc)
+
+        val cx = (loc[0] - myLoc[0]) + btn.width / 2f
+        val cy = (loc[1] - myLoc[1]) + btn.height / 2f
+        val baseRadius = btn.buttonSizePx / 2f
+
+        // 1. Dessin du 2e anneau externe (si activé)
+        if (btn.config.enableOuterRing && btn.outerSlices.isNotEmpty()) {
+            drawRing(canvas, btn, cx, cy, btn.innerRadiusPx, btn.outerRadiusPx, btn.outerSlices, ringId = 2)
+        }
+
+        // 2. Dessin du 1er anneau interne
+        if (btn.innerSlices.isNotEmpty()) {
+            drawRing(canvas, btn, cx, cy, baseRadius, btn.innerRadiusPx, btn.innerSlices, ringId = 1)
+        }
+
+        // 3. Rappel du centre par-dessus la jonction interne des tranches
+        paintFill.color = btn.mainColor
+        paintFill.alpha = (btn.alphaRatio * 255).toInt()
+        canvas.drawCircle(cx, cy, baseRadius, paintFill)
+        paintStroke.alpha = (btn.alphaRatio * 255).toInt()
+        canvas.drawCircle(cx, cy, baseRadius - 2f, paintStroke)
+        paintText.textSize = baseRadius * 0.52f
+        val yPos = cy - (paintText.descent() + paintText.ascent()) / 2
+        val centerLabel = if (btn.config.centerTapKey.isNotBlank()) btn.config.centerTapKey.take(3) else "❖"
+        canvas.drawText(centerLabel, cx, yPos, paintText)
+    }
+
+    private fun drawRing(
+        canvas: Canvas,
+        btn: RadialMenuView,
+        cx: Float,
+        cy: Float,
+        rIn: Float,
+        rOut: Float,
+        slices: List<KeySlice>,
+        ringId: Int
+    ) {
+        val count = slices.size.coerceAtLeast(1)
+        val sweepAngle = 360f / count
+        val rectOuter = RectF(cx - rOut, cy - rOut, cx + rOut, cy + rOut)
+
+        for (i in 0 until count) {
+            val startAngle = i * sweepAngle - 90f - (sweepAngle / 2f)
+            val isSel = (btn.selectedRing == ringId && btn.selectedIndex == i)
+            paintFill.color = if (isSel) btn.accentColor else btn.mainColor
+            paintFill.alpha = (btn.alphaRatio * 255).toInt()
+            paintStroke.alpha = (btn.alphaRatio * 255).toInt()
+
+            canvas.drawArc(rectOuter, startAngle, sweepAngle, true, paintFill)
+            canvas.drawArc(rectOuter, startAngle, sweepAngle, true, paintStroke)
+
+            val angleRad = Math.toRadians((startAngle + sweepAngle / 2f).toDouble())
+            val textDist = (rIn + rOut) / 2f
+            val tx = cx + (textDist * cos(angleRad)).toFloat()
+            val ty = cy + (textDist * sin(angleRad)).toFloat() - (paintText.descent() + paintText.ascent()) / 2f
+
+            paintText.textSize = ((rOut - rIn) * 0.34f).coerceIn(22f, 48f)
+            canvas.drawText(slices[i].label, tx, ty, paintText)
+        }
+    }
+}
+
+// Bouton flottant qui ne change JAMAIS de taille ni de position quand on clique dessus
 class RadialMenuView(
     context: Context,
     var config: RadialButtonConfig,
+    private val wheelRenderer: WheelRenderOverlayView,
     private val onKeySelected: (String) -> Unit,
-    private val onMoveOverlay: (Int, Int) -> Unit,
-    private val onExpandChanged: (Boolean) -> Unit
+    private val onMoveOverlay: (Int, Int) -> Unit
 ) : View(context) {
 
     var innerSlices: List<KeySlice> = emptyList()
@@ -26,10 +117,10 @@ class RadialMenuView(
     var mainColor: Int = Color.parseColor("#222222")
     var accentColor: Int = Color.parseColor("#FF5722")
 
-    private var isExpanded = false
-    private var isMoveMode = false
-    private var selectedRing = 0 // 0 = centre, 1 = anneau interne, 2 = anneau externe
-    private var selectedIndex = -1
+    var isExpanded = false
+    var isMoveMode = false
+    var selectedRing = 0
+    var selectedIndex = -1
     private var quickFlickTriggered = false
 
     private var rawStartX = 0f
@@ -63,6 +154,7 @@ class RadialMenuView(
         try { mainColor = Color.parseColor(config.mainColor) } catch (_: Exception) {}
         try { accentColor = Color.parseColor(config.accentColor) } catch (_: Exception) {}
         invalidate()
+        wheelRenderer.invalidate()
     }
 
     private fun dpToEvenPx(dp: Int, density: Float): Int {
@@ -70,7 +162,7 @@ class RadialMenuView(
         return if (px % 2 == 0) px else px + 1
     }
 
-    fun getMaxActiveRadiusPx(): Float {
+    private fun getMaxActiveRadiusPx(): Float {
         return if (config.enableOuterRing && outerSlices.isNotEmpty()) outerRadiusPx else innerRadiusPx
     }
 
@@ -89,78 +181,27 @@ class RadialMenuView(
         val cy = height / 2f
         val baseRadius = buttonSizePx / 2f
 
-        if (!isExpanded) {
-            paintFill.color = if (isMoveMode) accentColor else mainColor
-            paintFill.alpha = (alphaRatio * 255).toInt()
-            canvas.drawCircle(cx, cy, baseRadius, paintFill)
-            paintStroke.alpha = (alphaRatio * 255).toInt()
-            canvas.drawCircle(cx, cy, baseRadius - 2f, paintStroke)
-            paintText.textSize = baseRadius * 0.55f
-            val yPos = cy - (paintText.descent() + paintText.ascent()) / 2
-            val centerIcon = if (isMoveMode) "✥" else if (config.centerTapKey.isNotBlank()) config.centerTapKey.take(3) else "❖"
-            canvas.drawText(centerIcon, cx, yPos, paintText)
-            return
-        }
-
-        // 1. Dessin du 2e anneau externe (si activé) en premier pour que le 1er anneau se superpose proprement au centre
-        if (config.enableOuterRing && outerSlices.isNotEmpty()) {
-            drawRing(canvas, cx, cy, innerRadiusPx, outerRadiusPx, outerSlices, ringId = 2)
-        }
-
-        // 2. Dessin du 1er anneau interne
-        if (innerSlices.isNotEmpty()) {
-            drawRing(canvas, cx, cy, baseRadius, innerRadiusPx, innerSlices, ringId = 1)
-        }
-
-        // 3. Bouton central fixe (Zone morte / Clic court)
-        paintFill.color = mainColor
+        paintFill.color = if (isMoveMode) accentColor else mainColor
         paintFill.alpha = (alphaRatio * 255).toInt()
         canvas.drawCircle(cx, cy, baseRadius, paintFill)
+        paintStroke.alpha = (alphaRatio * 255).toInt()
         canvas.drawCircle(cx, cy, baseRadius - 2f, paintStroke)
-        paintText.textSize = baseRadius * 0.52f
+        paintText.textSize = baseRadius * 0.55f
         val yPos = cy - (paintText.descent() + paintText.ascent()) / 2
-        val centerLabel = if (config.centerTapKey.isNotBlank()) config.centerTapKey.take(3) else "❖"
-        canvas.drawText(centerLabel, cx, yPos, paintText)
-    }
-
-    private fun drawRing(
-        canvas: Canvas,
-        cx: Float,
-        cy: Float,
-        rIn: Float,
-        rOut: Float,
-        slices: List<KeySlice>,
-        ringId: Int
-    ) {
-        val count = slices.size.coerceAtLeast(1)
-        val sweepAngle = 360f / count
-        val rectOuter = RectF(cx - rOut, cy - rOut, cx + rOut, cy + rOut)
-
-        for (i in 0 until count) {
-            val startAngle = i * sweepAngle - 90f - (sweepAngle / 2f)
-            val isSel = (selectedRing == ringId && selectedIndex == i)
-            paintFill.color = if (isSel) accentColor else mainColor
-            paintFill.alpha = (alphaRatio * 255).toInt()
-
-            canvas.drawArc(rectOuter, startAngle, sweepAngle, true, paintFill)
-            canvas.drawArc(rectOuter, startAngle, sweepAngle, true, paintStroke)
-
-            val angleRad = Math.toRadians((startAngle + sweepAngle / 2f).toDouble())
-            val textDist = (rIn + rOut) / 2f
-            val tx = cx + (textDist * cos(angleRad)).toFloat()
-            val ty = cy + (textDist * sin(angleRad)).toFloat() - (paintText.descent() + paintText.ascent()) / 2f
-
-            paintText.textSize = ((rOut - rIn) * 0.34f).coerceIn(22f, 48f)
-            canvas.drawText(slices[i].label, tx, ty, paintText)
-        }
+        val centerIcon = if (isMoveMode) "✥" else if (config.centerTapKey.isNotBlank()) config.centerTapKey.take(3) else "❖"
+        canvas.drawText(centerIcon, cx, yPos, paintText)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 val now = System.currentTimeMillis()
-                rawStartX = event.rawX
-                rawStartY = event.rawY
+                // Ancre le centre géométrique réel du bouton sur l'écran (aucun décalage même si on tape sur le bord du bouton)
+                val loc = IntArray(2)
+                getLocationOnScreen(loc)
+                rawStartX = loc[0] + width / 2f
+                rawStartY = loc[1] + height / 2f
+
                 maxSlideDist = 0f
                 downTimestamp = now
                 selectedRing = 0
@@ -170,15 +211,18 @@ class RadialMenuView(
                 if (now - lastDownTime < 320L) {
                     isMoveMode = true
                     isExpanded = false
-                    onExpandChanged(false)
+                    wheelRenderer.activeButton = null
+                    rawStartX = event.rawX
+                    rawStartY = event.rawY
                     vibrate(45)
                 } else {
                     isMoveMode = false
                     isExpanded = true
-                    onExpandChanged(true)
+                    wheelRenderer.activeButton = this
                 }
                 lastDownTime = now
                 invalidate()
+                wheelRenderer.invalidate()
                 return true
             }
 
@@ -197,15 +241,14 @@ class RadialMenuView(
                     val slideDist = hypot(dx, dy)
                     if (slideDist > maxSlideDist) maxSlideDist = slideDist
 
-                    val deadZone = (buttonSizePx * 0.52f).coerceAtLeast(32f)
+                    val deadZone = buttonSizePx * 0.50f
 
                     if (slideDist <= deadZone) {
-                        // Retour au centre : réarme le Quick-Flick pour pouvoir enchaîner un autre sort !
                         quickFlickTriggered = false
                         if (selectedRing != 0 || selectedIndex != -1) {
                             selectedRing = 0
                             selectedIndex = -1
-                            invalidate()
+                            wheelRenderer.invalidate()
                         }
                     } else if (!quickFlickTriggered) {
                         val useOuter = config.enableOuterRing && outerSlices.isNotEmpty() && slideDist > innerRadiusPx
@@ -223,10 +266,9 @@ class RadialMenuView(
                                 selectedRing = activeRing
                                 selectedIndex = newIndex
                                 vibrate(10)
-                                invalidate()
+                                wheelRenderer.invalidate()
                             }
 
-                            // Mode Quick-Flick : déclenche dès qu'on franchit 88% du bord externe actif
                             val flickThreshold = getMaxActiveRadiusPx() * 0.88f
                             if (config.quickFlick && slideDist >= flickThreshold) {
                                 quickFlickTriggered = true
@@ -245,11 +287,10 @@ class RadialMenuView(
                     vibrate(20)
                 } else if (isExpanded) {
                     val pressDuration = System.currentTimeMillis() - downTimestamp
-                    val deadZone = (buttonSizePx * 0.52f).coerceAtLeast(32f)
+                    val deadZone = buttonSizePx * 0.50f
 
                     if (!quickFlickTriggered) {
                         if (maxSlideDist < deadZone && pressDuration < 280L && config.centerTapKey.isNotBlank()) {
-                            // Clic court au centre sans glissement -> Action centrale !
                             vibrate(20)
                             onKeySelected(config.centerTapKey)
                         } else if (selectedRing == 1 && selectedIndex in innerSlices.indices) {
@@ -265,9 +306,12 @@ class RadialMenuView(
                     selectedRing = 0
                     selectedIndex = -1
                     quickFlickTriggered = false
-                    onExpandChanged(false)
+                    if (wheelRenderer.activeButton == this) {
+                        wheelRenderer.activeButton = null
+                    }
                 }
                 invalidate()
+                wheelRenderer.invalidate()
                 return true
             }
         }

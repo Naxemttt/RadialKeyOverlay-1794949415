@@ -20,6 +20,7 @@ class RadialAccessibilityService : AccessibilityService() {
     )
 
     private lateinit var windowManager: WindowManager
+    private var wheelRenderOverlay: WheelRenderOverlayView? = null
     private val overlays = mutableListOf<OverlayInstance>()
     private var currentShellCmd = "input keyevent %d"
 
@@ -52,6 +53,10 @@ class RadialAccessibilityService : AccessibilityService() {
             try { windowManager.removeView(it.view) } catch (_: Exception) {}
         }
         overlays.clear()
+        wheelRenderOverlay?.let {
+            try { windowManager.removeView(it) } catch (_: Exception) {}
+        }
+        wheelRenderOverlay = null
     }
 
     private fun rebuildOverlays() {
@@ -60,14 +65,35 @@ class RadialAccessibilityService : AccessibilityService() {
         val activeProfile = profiles[activeIdx]
         currentShellCmd = activeProfile.shellCmd
 
+        val overlayType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        else
+            @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE
+
+        // 1. Calque plein écran transparent aux touches (FLAG_NOT_TOUCHABLE) pour dessiner les roues sans jamais redimensionner les boutons
+        val renderView = WheelRenderOverlayView(this)
+        val renderParams = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            overlayType,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            windowAnimations = 0
+        }
+        windowManager.addView(renderView, renderParams)
+        wheelRenderOverlay = renderView
+
+        // 2. Petits boutons flottants fixes (aucun redimensionnement au clic = zéro saut visuel)
         activeProfile.buttons.forEach { btnConfig ->
             val btnSize = dpToEvenPx(btnConfig.buttonSizeDp)
             val params = WindowManager.LayoutParams(
                 btnSize, btnSize,
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-                else
-                    @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE,
+                overlayType,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                         WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                         WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
@@ -84,6 +110,7 @@ class RadialAccessibilityService : AccessibilityService() {
             radialView = RadialMenuView(
                 context = this,
                 config = btnConfig,
+                wheelRenderer = renderView,
                 onKeySelected = { keySpec ->
                     KeyInjector.triggerKey(this, keySpec, currentShellCmd)
                 },
@@ -94,25 +121,6 @@ class RadialAccessibilityService : AccessibilityService() {
                     params.y = btnConfig.y
                     windowManager.updateViewLayout(radialView, params)
                     ConfigManager.saveAll(this, activeIdx, profiles)
-                },
-                onExpandChanged = { expanded ->
-                    val collapsedSize = radialView.buttonSizePx.toInt()
-                    var expandedSize = (radialView.getMaxActiveRadiusPx() * 2.12f).toInt()
-                    if (expandedSize % 2 != 0) expandedSize += 1
-
-                    if (expanded) {
-                        val offset = (expandedSize - collapsedSize) / 2
-                        params.x = btnConfig.x - offset
-                        params.y = btnConfig.y - offset
-                        params.width = expandedSize
-                        params.height = expandedSize
-                    } else {
-                        params.x = btnConfig.x
-                        params.y = btnConfig.y
-                        params.width = collapsedSize
-                        params.height = collapsedSize
-                    }
-                    windowManager.updateViewLayout(radialView, params)
                 }
             )
 
