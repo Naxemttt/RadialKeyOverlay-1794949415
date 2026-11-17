@@ -13,7 +13,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="RadialKey Overlay Pro v2.6"
+            android:text="RadialKey Overlay Pro v2.8"
             android:textColor="#FFFFFF"
             android:textSize="21sp"
             android:textStyle="bold"
@@ -120,6 +120,47 @@
                 android:text="Suppr" />
         </LinearLayout>
 
+        <!-- BOUTON CENTRAL (LIBELLÉ ET ACTION) -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="Bouton Central (Texte / Icône affiché) :"
+            android:textColor="#BBBBBB" />
+
+        <EditText
+            android:id="@+id/editCenterLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#FFFFFF"
+            android:hint="Ex: ❖, ⚔️, SP ou MENU" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Action du Clic Court au Centre (Touche clavier envoyée) :"
+            android:textColor="#BBBBBB" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <EditText
+                android:id="@+id/editCenterTapKey"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="#FFFFFF"
+                android:hint="Ex: SPACE ou TAB" />
+            <Button
+                android:id="@+id/btnPickCenterKey"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="🎹 Clavier" />
+        </LinearLayout>
+
         <!-- ANNEAU 1 -->
         <TextView
             android:layout_width="match_parent"
@@ -169,33 +210,6 @@
                 android:hint="Ex: S1:CTRL+1, S2:ESC" />
             <Button
                 android:id="@+id/btnPickOuterKeys"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
-                android:text="🎹 Clavier" />
-        </LinearLayout>
-
-        <!-- CLIC CENTRAL -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:text="Action sur Clic Court au Centre :"
-            android:textColor="#BBBBBB" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-            <EditText
-                android:id="@+id/editCenterTapKey"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textColor="#FFFFFF"
-                android:hint="Ex: SPACE ou TAB" />
-            <Button
-                android:id="@+id/btnPickCenterKey"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="6dp"

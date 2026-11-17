@@ -19,6 +19,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var editProfileName: EditText
     private lateinit var spinnerButtons: Spinner
     private lateinit var editButtonName: EditText
+    private lateinit var editCenterLabel: EditText
     private lateinit var editInnerKeys: EditText
     private lateinit var chkOuterRing: CheckBox
     private lateinit var editOuterKeys: EditText
@@ -48,6 +49,7 @@ class MainActivity : AppCompatActivity() {
         editProfileName = findViewById(R.id.editProfileName)
         spinnerButtons = findViewById(R.id.spinnerButtons)
         editButtonName = findViewById(R.id.editButtonName)
+        editCenterLabel = findViewById(R.id.editCenterLabel)
         editInnerKeys = findViewById(R.id.editInnerKeys)
         chkOuterRing = findViewById(R.id.chkOuterRing)
         editOuterKeys = findViewById(R.id.editOuterKeys)
@@ -76,7 +78,6 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
 
-        // Connexion des boutons 🎹 Clavier interactifs
         findViewById<Button>(R.id.btnPickInnerKeys).setOnClickListener {
             KeyPickerDialog(this, editInnerKeys.text.toString().trim()) { pickedKey ->
                 if (pickedKey.isNotBlank()) {
@@ -233,6 +234,7 @@ class MainActivity : AppCompatActivity() {
 
         val b = p.buttons.getOrNull(activeButtonIdx) ?: return
         b.name = editButtonName.text.toString().ifBlank { "Bouton" }
+        b.centerLabel = editCenterLabel.text.toString().ifBlank { "❖" }
         b.innerKeys = editInnerKeys.text.toString()
         b.enableOuterRing = chkOuterRing.isChecked
         b.outerKeys = editOuterKeys.text.toString()
@@ -270,6 +272,7 @@ class MainActivity : AppCompatActivity() {
         isUpdatingUi = true
         val b = profiles[activeProfileIdx].buttons[activeButtonIdx]
         editButtonName.setText(b.name)
+        editCenterLabel.setText(b.centerLabel)
         editInnerKeys.setText(b.innerKeys)
         chkOuterRing.isChecked = b.enableOuterRing
         editOuterKeys.setText(b.outerKeys)

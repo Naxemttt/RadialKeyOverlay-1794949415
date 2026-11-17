@@ -55,8 +55,8 @@ class WheelRenderOverlayView(context: Context) : View(context) {
         canvas.drawCircle(cx, cy, baseRadius - 2f, paintStroke)
         paintText.textSize = baseRadius * 0.52f
         val yPos = cy - (paintText.descent() + paintText.ascent()) / 2
-        val centerLabel = if (btn.config.centerTapKey.isNotBlank()) btn.config.centerTapKey.take(3) else "❖"
-        canvas.drawText(centerLabel, cx, yPos, paintText)
+        val centerDisplay = if (btn.config.centerLabel.isNotBlank()) btn.config.centerLabel else "❖"
+        canvas.drawText(centerDisplay, cx, yPos, paintText)
     }
 
     private fun drawRing(
@@ -171,7 +171,6 @@ class RadialMenuView(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        // Quand la roue est déployée, c'est le calque WheelRenderOverlayView qui dessine tout (évite la double superposition / clignotement)
         if (isExpanded) return
 
         val cx = width / 2f
@@ -185,8 +184,8 @@ class RadialMenuView(
         canvas.drawCircle(cx, cy, baseRadius - 2f, paintStroke)
         paintText.textSize = baseRadius * 0.55f
         val yPos = cy - (paintText.descent() + paintText.ascent()) / 2
-        val centerIcon = if (isMoveMode) "✥" else if (config.centerTapKey.isNotBlank()) config.centerTapKey.take(3) else "❖"
-        canvas.drawText(centerIcon, cx, yPos, paintText)
+        val centerDisplay = if (isMoveMode) "✥" else if (config.centerLabel.isNotBlank()) config.centerLabel else "❖"
+        canvas.drawText(centerDisplay, cx, yPos, paintText)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {

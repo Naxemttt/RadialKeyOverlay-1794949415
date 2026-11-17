@@ -17,9 +17,10 @@ data class RadialButtonConfig(
     var opacity: Int = 85,
     var mainColor: String = "#222222",
     var accentColor: String = "#FF5722",
-    var innerKeys: String = "⚡:1, 🔥:2, 🛡️:3, 🩹:4, 🐺:5, 💥:6",
+    var innerKeys: String = "⚡:F1, 🔥:F2, 🛡️:1, 🩹:2, 🐺:3, 💥:4",
     var enableOuterRing: Boolean = false,
     var outerKeys: String = "S1:SHIFT+1, S2:SHIFT+2, S3:SHIFT+3, S4:SHIFT+4, S5:SHIFT+5, S6:SHIFT+6",
+    var centerLabel: String = "❖",
     var centerTapKey: String = "SPACE",
     var quickFlick: Boolean = false
 ) {
@@ -50,6 +51,7 @@ data class RadialButtonConfig(
         put("innerKeys", innerKeys)
         put("enableOuterRing", enableOuterRing)
         put("outerKeys", outerKeys)
+        put("centerLabel", centerLabel)
         put("centerTapKey", centerTapKey)
         put("quickFlick", quickFlick)
     }
@@ -69,7 +71,8 @@ data class RadialButtonConfig(
             innerKeys = o.optString("innerKeys", "1,2,3,4,5,6"),
             enableOuterRing = o.optBoolean("enableOuterRing", false),
             outerKeys = o.optString("outerKeys", "F1,F2,F3,F4,F5,F6"),
-            centerTapKey = o.optString("centerTapKey", ""),
+            centerLabel = o.optString("centerLabel", "❖"),
+            centerTapKey = o.optString("centerTapKey", "SPACE"),
             quickFlick = o.optBoolean("quickFlick", false)
         )
     }
