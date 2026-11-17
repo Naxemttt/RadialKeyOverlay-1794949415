@@ -1,82 +1,229 @@
 package com.custom.radialpad
 
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
+import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
+
+    private var profiles = mutableListOf<RadialProfile>()
+    private var activeProfileIdx = 0
+    private var activeButtonIdx = 0
+    private var suppressSpinnerEvents = false
+
+    private lateinit var spinnerProfiles: Spinner
+    private lateinit var editProfileName: EditText
+    private lateinit var spinnerButtons: Spinner
+    private lateinit var editButtonName: EditText
+    private lateinit var editInnerKeys: EditText
+    private lateinit var chkOuterRing: CheckBox
+    private lateinit var editOuterKeys: EditText
+    private lateinit var editCenterTapKey: EditText
+    private lateinit var chkQuickFlick: CheckBox
+    private lateinit var seekButtonSize: SeekBar
+    private lateinit var txtButtonSize: TextView
+    private lateinit var seekInnerRadius: SeekBar
+    private lateinit var txtInnerRadius: TextView
+    private lateinit var seekOuterRadius: SeekBar
+    private lateinit var txtOuterRadius: TextView
+    private lateinit var seekOpacity: SeekBar
+    private lateinit var txtOpacity: TextView
+    private lateinit var editMainColor: EditText
+    private lateinit var editAccentColor: EditText
+    private lateinit var editShellCmd: EditText
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val prefs = getSharedPreferences("radial_prefs", Context.MODE_PRIVATE)
-        val btnOverlayPerm = findViewById<Button>(R.id.btnOverlayPerm)
-        val btnAccService = findViewById<Button>(R.id.btnAccService)
-        val editKeys = findViewById<EditText>(R.id.editKeys)
-        val seekButtonSize = findViewById<SeekBar>(R.id.seekButtonSize)
-        val txtButtonSize = findViewById<TextView>(R.id.txtButtonSize)
-        val seekMenuRadius = findViewById<SeekBar>(R.id.seekMenuRadius)
-        val txtMenuRadius = findViewById<TextView>(R.id.txtMenuRadius)
-        val seekOpacity = findViewById<SeekBar>(R.id.seekOpacity)
-        val txtOpacity = findViewById<TextView>(R.id.txtOpacity)
-        val editMainColor = findViewById<EditText>(R.id.editMainColor)
-        val editAccentColor = findViewById<EditText>(R.id.editAccentColor)
-        val editShellCmd = findViewById<EditText>(R.id.editShellCmd)
-        val btnSave = findViewById<Button>(R.id.btnSave)
+        val loaded = ConfigManager.loadAll(this)
+        activeProfileIdx = loaded.first
+        profiles = loaded.second
 
-        editKeys.setText(prefs.getString("keys", "1,2,3,4,5,6"))
-        seekButtonSize.progress = prefs.getInt("btn_size", 70)
-        txtButtonSize.text = "Taille du bouton flottant : ${seekButtonSize.progress} dp"
-        seekMenuRadius.progress = prefs.getInt("menu_radius", 160)
-        txtMenuRadius.text = "Rayon du menu déployé : ${seekMenuRadius.progress} dp"
-        seekOpacity.progress = prefs.getInt("opacity", 80)
-        txtOpacity.text = "Opacité : ${seekOpacity.progress}%"
-        editMainColor.setText(prefs.getString("main_color", "#222222"))
-        editAccentColor.setText(prefs.getString("accent_color", "#FF5722"))
-        editShellCmd.setText(prefs.getString("shell_cmd", "input keyevent %d"))
+        spinnerProfiles = findViewById(R.id.spinnerProfiles)
+        editProfileName = findViewById(R.id.editProfileName)
+        spinnerButtons = findViewById(R.id.spinnerButtons)
+        editButtonName = findViewById(R.id.editButtonName)
+        editInnerKeys = findViewById(R.id.editInnerKeys)
+        chkOuterRing = findViewById(R.id.chkOuterRing)
+        editOuterKeys = findViewById(R.id.editOuterKeys)
+        editCenterTapKey = findViewById(R.id.editCenterTapKey)
+        chkQuickFlick = findViewById(R.id.chkQuickFlick)
+        seekButtonSize = findViewById(R.id.seekButtonSize)
+        txtButtonSize = findViewById(R.id.txtButtonSize)
+        seekInnerRadius = findViewById(R.id.seekInnerRadius)
+        txtInnerRadius = findViewById(R.id.txtInnerRadius)
+        seekOuterRadius = findViewById(R.id.seekOuterRadius)
+        txtOuterRadius = findViewById(R.id.txtOuterRadius)
+        seekOpacity = findViewById(R.id.seekOpacity)
+        txtOpacity = findViewById(R.id.txtOpacity)
+        editMainColor = findViewById(R.id.editMainColor)
+        editAccentColor = findViewById(R.id.editAccentColor)
+        editShellCmd = findViewById(R.id.editShellCmd)
 
-        btnOverlayPerm.setOnClickListener {
+        findViewById<Button>(R.id.btnOverlayPerm).setOnClickListener {
             if (!Settings.canDrawOverlays(this)) {
                 startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
             } else {
-                Toast.makeText(this, "Autorisation Overlay déjà accordée !", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Autorisation Overlay active !", Toast.LENGTH_SHORT).show()
             }
         }
-        btnAccService.setOnClickListener { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
-
-        seekButtonSize.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(s: SeekBar?, p: Int, b: Boolean) { txtButtonSize.text = "Taille du bouton flottant : ${p.coerceAtLeast(30)} dp" }
-            override fun onStartTrackingTouch(s: SeekBar?) {}
-            override fun onStopTrackingTouch(s: SeekBar?) {}
-        })
-        seekMenuRadius.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(s: SeekBar?, p: Int, b: Boolean) { txtMenuRadius.text = "Rayon du menu déployé : ${p.coerceAtLeast(80)} dp" }
-            override fun onStartTrackingTouch(s: SeekBar?) {}
-            override fun onStopTrackingTouch(s: SeekBar?) {}
-        })
-        seekOpacity.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(s: SeekBar?, p: Int, b: Boolean) { txtOpacity.text = "Opacité : ${p.coerceAtLeast(10)}%" }
-            override fun onStartTrackingTouch(s: SeekBar?) {}
-            override fun onStopTrackingTouch(s: SeekBar?) {}
-        })
-
-        btnSave.setOnClickListener {
-            prefs.edit().apply {
-                putString("keys", editKeys.text.toString())
-                putInt("btn_size", seekButtonSize.progress.coerceAtLeast(30))
-                putInt("menu_radius", seekMenuRadius.progress.coerceAtLeast(80))
-                putInt("opacity", seekOpacity.progress.coerceAtLeast(10))
-                putString("main_color", editMainColor.text.toString())
-                putString("accent_color", editAccentColor.text.toString())
-                putString("shell_cmd", editShellCmd.text.toString())
-                apply()
-            }
-            sendBroadcast(Intent("com.custom.radialpad.UPDATE_CONFIG").setPackage(packageName))
-            Toast.makeText(this, "Configuration mise à jour !", Toast.LENGTH_SHORT).show()
+        findViewById<Button>(R.id.btnAccService).setOnClickListener {
+            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
+
+        spinnerProfiles.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                if (suppressSpinnerEvents) return
+                saveCurrentFieldsToMemory()
+                activeProfileIdx = position
+                activeButtonIdx = 0
+                refreshSpinnersAndFields()
+                pushLiveUpdate()
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+
+        spinnerButtons.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                if (suppressSpinnerEvents) return
+                saveCurrentFieldsToMemory()
+                activeButtonIdx = position
+                populateButtonFields()
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+
+        findViewById<Button>(R.id.btnAddProfile).setOnClickListener {
+            saveCurrentFieldsToMemory()
+            val newP = RadialProfile(name = "Profil ${profiles.size + 1}")
+            profiles.add(newP)
+            activeProfileIdx = profiles.size - 1
+            activeButtonIdx = 0
+            refreshSpinnersAndFields()
+            pushLiveUpdate()
+        }
+
+        findViewById<Button>(R.id.btnDelProfile).setOnClickListener {
+            if (profiles.size > 1) {
+                profiles.removeAt(activeProfileIdx)
+                activeProfileIdx = (activeProfileIdx - 1).coerceAtLeast(0)
+                activeButtonIdx = 0
+                refreshSpinnersAndFields()
+                pushLiveUpdate()
+            } else {
+                Toast.makeText(this, "Impossible de supprimer le dernier profil", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        findViewById<Button>(R.id.btnAddButton).setOnClickListener {
+            saveCurrentFieldsToMemory()
+            val p = profiles[activeProfileIdx]
+            val idx = p.buttons.size + 1
+            p.buttons.add(RadialButtonConfig(name = "Bouton $idx", x = 200 + (idx * 90), y = 500))
+            activeButtonIdx = p.buttons.size - 1
+            refreshSpinnersAndFields()
+            pushLiveUpdate()
+        }
+
+        findViewById<Button>(R.id.btnDelButton).setOnClickListener {
+            val p = profiles[activeProfileIdx]
+            if (p.buttons.size > 1) {
+                p.buttons.removeAt(activeButtonIdx)
+                activeButtonIdx = (activeButtonIdx - 1).coerceAtLeast(0)
+                refreshSpinnersAndFields()
+                pushLiveUpdate()
+            } else {
+                Toast.makeText(this, "Un profil doit garder au moins 1 bouton", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        seekButtonSize.setOnSeekBarChangeListener(simpleSeek { txtButtonSize.text = "Taille bouton central : ${it.coerceAtLeast(30)} dp" })
+        seekInnerRadius.setOnSeekBarChangeListener(simpleSeek { txtInnerRadius.text = "Rayon Anneau 1 : ${it.coerceAtLeast(80)} dp" })
+        seekOuterRadius.setOnSeekBarChangeListener(simpleSeek { txtOuterRadius.text = "Rayon Anneau 2 (Externe) : ${it.coerceAtLeast(130)} dp" })
+        seekOpacity.setOnSeekBarChangeListener(simpleSeek { txtOpacity.text = "Opacité : ${it.coerceAtLeast(10)}%" })
+
+        findViewById<Button>(R.id.btnSave).setOnClickListener {
+            saveCurrentFieldsToMemory()
+            refreshSpinnersAndFields()
+            pushLiveUpdate()
+            Toast.makeText(this, "Profil & Boutons appliqués en direct !", Toast.LENGTH_SHORT).show()
+        }
+
+        refreshSpinnersAndFields()
+    }
+
+    private fun simpleSeek(onChange: (Int) -> Unit) = object : SeekBar.OnSeekBarChangeListener {
+        override fun onProgressChanged(s: SeekBar?, p: Int, b: Boolean) { onChange(p) }
+        override fun onStartTrackingTouch(s: SeekBar?) {}
+        override fun onStopTrackingTouch(s: SeekBar?) {}
+    }
+
+    private fun saveCurrentFieldsToMemory() {
+        val p = profiles.getOrNull(activeProfileIdx) ?: return
+        p.name = editProfileName.text.toString().ifBlank { "Profil" }
+        p.shellCmd = editShellCmd.text.toString().ifBlank { "input keyevent %d" }
+
+        val b = p.buttons.getOrNull(activeButtonIdx) ?: return
+        b.name = editButtonName.text.toString().ifBlank { "Bouton" }
+        b.innerKeys = editInnerKeys.text.toString()
+        b.enableOuterRing = chkOuterRing.isChecked
+        b.outerKeys = editOuterKeys.text.toString()
+        b.centerTapKey = editCenterTapKey.text.toString().trim()
+        b.quickFlick = chkQuickFlick.isChecked
+        b.buttonSizeDp = seekButtonSize.progress.coerceAtLeast(30)
+        b.innerRadiusDp = seekInnerRadius.progress.coerceAtLeast(80)
+        b.outerRadiusDp = seekOuterRadius.progress.coerceAtLeast(b.innerRadiusDp + 40)
+        b.opacity = seekOpacity.progress.coerceAtLeast(10)
+        b.mainColor = editMainColor.text.toString().ifBlank { "#222222" }
+        b.accentColor = editAccentColor.text.toString().ifBlank { "#FF5722" }
+    }
+
+    private fun refreshSpinnersAndFields() {
+        suppressSpinnerEvents = true
+        val pNames = profiles.map { it.name }
+        spinnerProfiles.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, pNames)
+        spinnerProfiles.setSelection(activeProfileIdx)
+
+        val currentProfile = profiles[activeProfileIdx]
+        editProfileName.setText(currentProfile.name)
+        editShellCmd.setText(currentProfile.shellCmd)
+
+        val bNames = currentProfile.buttons.map { it.name }
+        spinnerButtons.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, bNames)
+        activeButtonIdx = activeButtonIdx.coerceIn(0, currentProfile.buttons.size - 1)
+        spinnerButtons.setSelection(activeButtonIdx)
+
+        populateButtonFields()
+        suppressSpinnerEvents = false
+    }
+
+    private fun populateButtonFields() {
+        val b = profiles[activeProfileIdx].buttons[activeButtonIdx]
+        editButtonName.setText(b.name)
+        editInnerKeys.setText(b.innerKeys)
+        chkOuterRing.isChecked = b.enableOuterRing
+        editOuterKeys.setText(b.outerKeys)
+        editCenterTapKey.setText(b.centerTapKey)
+        chkQuickFlick.isChecked = b.quickFlick
+        seekButtonSize.progress = b.buttonSizeDp
+        txtButtonSize.text = "Taille bouton central : ${b.buttonSizeDp} dp"
+        seekInnerRadius.progress = b.innerRadiusDp
+        txtInnerRadius.text = "Rayon Anneau 1 : ${b.innerRadiusDp} dp"
+        seekOuterRadius.progress = b.outerRadiusDp
+        txtOuterRadius.text = "Rayon Anneau 2 (Externe) : ${b.outerRadiusDp} dp"
+        seekOpacity.progress = b.opacity
+        txtOpacity.text = "Opacité : ${b.opacity}%"
+        editMainColor.setText(b.mainColor)
+        editAccentColor.setText(b.accentColor)
+    }
+
+    private fun pushLiveUpdate() {
+        ConfigManager.saveAll(this, activeProfileIdx, profiles)
+        sendBroadcast(Intent("com.custom.radialpad.UPDATE_CONFIG").setPackage(packageName))
     }
 }

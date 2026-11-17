@@ -2,7 +2,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="16dp"
+    android:padding="14dp"
     android:background="#121212">
 
     <LinearLayout
@@ -13,131 +13,260 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Configuration Menu Radial"
+            android:text="RadialKey Overlay Pro v2.0"
             android:textColor="#FFFFFF"
-            android:textSize="22sp"
+            android:textSize="21sp"
             android:textStyle="bold"
-            android:layout_marginBottom="16dp"/>
+            android:layout_marginBottom="10dp"/>
 
-        <Button
-            android:id="@+id/btnOverlayPerm"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="1. Autoriser la superposition (Overlay)" />
+            android:orientation="horizontal">
+            <Button
+                android:id="@+id/btnOverlayPerm"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="1. Overlay" />
+            <Button
+                android:id="@+id/btnAccService"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="2. Accessibilité" />
+        </LinearLayout>
 
-        <Button
-            android:id="@+id/btnAccService"
+        <!-- GESTION DES PROFILS -->
+        <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="2. Activer le Service (Accessibilité)" />
+            android:layout_marginTop="14dp"
+            android:text="PROFIL ACTIF"
+            android:textColor="#FF9800"
+            android:textStyle="bold" />
+
+        <Spinner
+            android:id="@+id/spinnerProfiles"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:background="#222222" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp">
+            <EditText
+                android:id="@+id/editProfileName"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="Nom du profil"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#777777" />
+            <Button
+                android:id="@+id/btnAddProfile"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="+ Profil" />
+            <Button
+                android:id="@+id/btnDelProfile"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:text="Suppr" />
+        </LinearLayout>
+
+        <!-- GESTION DES BOUTONS DU PROFIL -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="BOUTON RADIAL À CONFIGURER"
+            android:textColor="#03A9F4"
+            android:textStyle="bold" />
+
+        <Spinner
+            android:id="@+id/spinnerButtons"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:background="#222222" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp">
+            <EditText
+                android:id="@+id/editButtonName"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="Nom du bouton"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#777777" />
+            <Button
+                android:id="@+id/btnAddButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="+ Bouton" />
+            <Button
+                android:id="@+id/btnDelButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:text="Suppr" />
+        </LinearLayout>
+
+        <!-- CONFIGURATION DES TOUCHES & ANNEAUX -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="Anneau 1 (Format Label:Touche ou Touche seule) :"
+            android:textColor="#BBBBBB" />
+
+        <EditText
+            android:id="@+id/editInnerKeys"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#FFFFFF"
+            android:hint="Ex: ⚡:1, 🔥:2, 🛡️:3, 🐺:4, Soin:F1" />
+
+        <CheckBox
+            android:id="@+id/chkOuterRing"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="Activer le 2e Anneau Externe"
+            android:textColor="#FFFFFF" />
+
+        <EditText
+            android:id="@+id/editOuterKeys"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#FFFFFF"
+            android:hint="Ex: S1:SHIFT+1, S2:SHIFT+2, Sac:B, Carte:M" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="Touches (séparées par des virgules) :"
+            android:layout_marginTop="10dp"
+            android:text="Action sur Clic Court au Centre (vide = aucune) :"
             android:textColor="#BBBBBB" />
 
         <EditText
-            android:id="@+id/editKeys"
+            android:id="@+id/editCenterTapKey"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="1,2,3,4,5,6"
+            android:textColor="#FFFFFF"
+            android:hint="Ex: SPACE ou TAB" />
+
+        <CheckBox
+            android:id="@+id/chkQuickFlick"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Mode Quick-Flick (déclenche au bord sans relâcher)"
             android:textColor="#FFFFFF" />
 
+        <!-- TAILLES & COULEURS -->
         <TextView
             android:id="@+id/txtButtonSize"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Taille du bouton flottant : 70 dp"
+            android:layout_marginTop="10dp"
+            android:text="Taille bouton central : 68 dp"
             android:textColor="#BBBBBB" />
-
         <SeekBar
             android:id="@+id/seekButtonSize"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:max="150"
-            android:progress="70" />
+            android:max="140"
+            android:progress="68" />
 
         <TextView
-            android:id="@+id/txtMenuRadius"
+            android:id="@+id/txtInnerRadius"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Rayon du menu déployé : 160 dp"
+            android:layout_marginTop="8dp"
+            android:text="Rayon Anneau 1 : 145 dp"
             android:textColor="#BBBBBB" />
-
         <SeekBar
-            android:id="@+id/seekMenuRadius"
+            android:id="@+id/seekInnerRadius"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:max="300"
-            android:progress="160" />
+            android:max="260"
+            android:progress="145" />
+
+        <TextView
+            android:id="@+id/txtOuterRadius"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Rayon Anneau 2 (Externe) : 225 dp"
+            android:textColor="#BBBBBB" />
+        <SeekBar
+            android:id="@+id/seekOuterRadius"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="360"
+            android:progress="225" />
 
         <TextView
             android:id="@+id/txtOpacity"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Opacité : 80%"
+            android:layout_marginTop="8dp"
+            android:text="Opacité : 85%"
             android:textColor="#BBBBBB" />
-
         <SeekBar
             android:id="@+id/seekOpacity"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:max="100"
-            android:progress="80" />
+            android:progress="85" />
 
-        <TextView
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Couleur Principale (Hex) :"
-            android:textColor="#BBBBBB" />
-
-        <EditText
-            android:id="@+id/editMainColor"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="#222222"
-            android:textColor="#FFFFFF" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Couleur Sélection / Accent (Hex) :"
-            android:textColor="#BBBBBB" />
-
-        <EditText
-            android:id="@+id/editAccentColor"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="#FF5722"
-            android:textColor="#FFFFFF" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Commande Shell (%d = KeyCode) :"
-            android:textColor="#BBBBBB" />
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
+            <EditText
+                android:id="@+id/editMainColor"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="#222222"
+                android:textColor="#FFFFFF"
+                android:hint="Couleur Fond" />
+            <EditText
+                android:id="@+id/editAccentColor"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="#FF5722"
+                android:textColor="#FFFFFF"
+                android:hint="Couleur Accent" />
+        </LinearLayout>
 
         <EditText
             android:id="@+id/editShellCmd"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
             android:text="input keyevent %d"
-            android:textColor="#FFFFFF" />
+            android:textColor="#FFFFFF"
+            android:hint="Commande Shell (%d = KeyCode)" />
 
         <Button
             android:id="@+id/btnSave"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:text="Enregistrer et Appliquer en direct" />
+            android:layout_height="54dp"
+            android:layout_marginTop="16dp"
+            android:text="ENREGISTRER ET APPLIQUER EN DIRECT" />
     </LinearLayout>
 </ScrollView>

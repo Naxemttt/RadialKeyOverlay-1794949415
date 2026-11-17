@@ -36,22 +36,26 @@ object KeyInjector {
         "ALT" to KeyEvent.KEYCODE_ALT_LEFT
     )
 
-    fun triggerKey(service: AccessibilityService, label: String, shellTemplate: String) {
-        val cleanLabel = label.trim().uppercase()
-        val keyCode = keyMap[cleanLabel] ?: KeyEvent.KEYCODE_UNKNOWN
+    fun triggerKey(service: AccessibilityService, rawSpec: String, shellTemplate: String) {
+        val cleanSpec = rawSpec.trim().uppercase()
+        if (cleanSpec.isEmpty()) return
+
+        val parts = cleanSpec.split("+").map { it.trim() }.filter { it.isNotEmpty() }
+        val codes = parts.mapNotNull { keyMap[it] }
 
         thread {
-            if (keyCode != KeyEvent.KEYCODE_UNKNOWN && shellTemplate.isNotBlank()) {
-                val cmd = String.format(shellTemplate, keyCode)
+            if (codes.isNotEmpty() && shellTemplate.isNotBlank()) {
+                val fullCmd = codes.joinToString(" && ") { code -> String.format(shellTemplate, code) }
                 try {
-                    Runtime.getRuntime().exec(arrayOf("su", "-c", cmd)).waitFor()
+                    Runtime.getRuntime().exec(arrayOf("su", "-c", fullCmd)).waitFor()
                 } catch (e: Exception) {
-                    try { Runtime.getRuntime().exec(arrayOf("sh", "-c", cmd)).waitFor() } catch (_: Exception) {}
+                    try { Runtime.getRuntime().exec(arrayOf("sh", "-c", fullCmd)).waitFor() } catch (_: Exception) {}
                 }
             }
             try {
                 val socket = DatagramSocket()
-                val payload = "KEY:$cleanLabel:$keyCode".toByteArray()
+                val codeStr = codes.joinToString("+")
+                val payload = "KEY:$cleanSpec:$codeStr".toByteArray()
                 val packet = DatagramPacket(payload, payload.size, InetAddress.getByName("127.0.0.1"), 9999)
                 socket.send(packet)
                 socket.close()
@@ -60,10 +64,10 @@ object KeyInjector {
 
         val root = service.rootInActiveWindow
         val focused = root?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-        if (focused != null && cleanLabel.length == 1) {
+        if (focused != null && cleanSpec.length == 1) {
             val currentText = focused.text?.toString() ?: ""
             val args = Bundle().apply {
-                putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, currentText + cleanLabel)
+                putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, currentText + cleanSpec)
             }
             focused.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
         }
