@@ -48,43 +48,31 @@ object KeyInjector {
         val parts = cleanSpec.split("+").map { it.trim() }.filter { it.isNotEmpty() }
         val androidKeyCodes = parts.mapNotNull { keyMap[it] }
 
-        // 1. Injection directe via les privilèges de l'Accessibilité au premier plan (prioritaire)
-        try {
-            for (code in androidKeyCodes) {
-                val downEvent = KeyEvent(Intent.ACTION_DOWN, code)
-                val upEvent = KeyEvent(Intent.ACTION_UP, code)
-                service.sendInverseKeyEvent(downEvent) // Force l'injection système
-                service.getRootInActiveWindow()?.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
-            }
-        } catch (_: Exception) {}
-
         thread {
-            // 2. Exécution de la commande shell en parallèle au cas où
+            // Exécution de la commande shell configurée (ex: input keyevent %d)
             if (androidKeyCodes.isNotEmpty() && shellTemplate.isNotBlank()) {
                 val fullCmd = androidKeyCodes.joinToString(" && ") { code -> String.format(shellTemplate, code) }
                 try {
-                    Runtime.getRuntime().exec(arrayOf("sh", "-c", fullCmd)).waitFor()
-                } catch (_: Exception) {}
+                    Runtime.getRuntime().exec(arrayOf("su", "-c", fullCmd)).waitFor()
+                } catch (e: Exception) {
+                    try {
+                        Runtime.getRuntime().exec(arrayOf("sh", "-c", fullCmd)).waitFor()
+                    } catch (_: Exception) {}
+                }
             }
         }
 
-        // 3. Injection dans les champs de texte actifs
-        val root = service.rootInActiveWindow
-        val focused = root?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-        if (focused != null && cleanSpec.length == 1 && androidKeyCodes.isNotEmpty()) {
-            val currentText = focused.text?.toString() ?: ""
-            val args = Bundle().apply {
-                putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, currentText + cleanSpec)
-            }
-            focused.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
-        }
-    }
-
-    private fun AccessibilityService.sendInverseKeyEvent(event: KeyEvent) {
+        // Injection directe dans la vue active du focus via l'Accessibilité
         try {
-            // Méthode système interne d'injection d'événement via le service d'accessibilité
-            val injectMethod = AccessibilityService::class.java.getMethod("injectInputEvent", android.view.InputEvent::class.java, Boolean::class.java)
-            injectMethod.invoke(this, event, true)
+            val root = service.rootInActiveWindow
+            val focused = root?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+            if (focused != null && cleanSpec.length == 1) {
+                val currentText = focused.text?.toString() ?: ""
+                val args = Bundle().apply {
+                    putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, currentText + cleanSpec)
+                }
+                focused.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+            }
         } catch (_: Exception) {}
     }
 }
