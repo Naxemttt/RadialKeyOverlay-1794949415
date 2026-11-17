@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp"
+    android:background="#121212">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Configuration Menu Radial"
+            android:textColor="#FFFFFF"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="16dp"/>
+
+        <Button
+            android:id="@+id/btnOverlayPerm"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="1. Autoriser la superposition (Overlay)" />
+
+        <Button
+            android:id="@+id/btnAccService"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="2. Activer le Service (Accessibilité)" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Touches (séparées par des virgules) :"
+            android:textColor="#BBBBBB" />
+
+        <EditText
+            android:id="@+id/editKeys"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="1,2,3,4,5,6"
+            android:textColor="#FFFFFF" />
+
+        <TextView
+            android:id="@+id/txtButtonSize"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Taille du bouton flottant : 70 dp"
+            android:textColor="#BBBBBB" />
+
+        <SeekBar
+            android:id="@+id/seekButtonSize"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="150"
+            android:progress="70" />
+
+        <TextView
+            android:id="@+id/txtMenuRadius"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Rayon du menu déployé : 160 dp"
+            android:textColor="#BBBBBB" />
+
+        <SeekBar
+            android:id="@+id/seekMenuRadius"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="300"
+            android:progress="160" />
+
+        <TextView
+            android:id="@+id/txtOpacity"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Opacité : 80%"
+            android:textColor="#BBBBBB" />
+
+        <SeekBar
+            android:id="@+id/seekOpacity"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="100"
+            android:progress="80" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Couleur Principale (Hex) :"
+            android:textColor="#BBBBBB" />
+
+        <EditText
+            android:id="@+id/editMainColor"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="#222222"
+            android:textColor="#FFFFFF" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Couleur Sélection / Accent (Hex) :"
+            android:textColor="#BBBBBB" />
+
+        <EditText
+            android:id="@+id/editAccentColor"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="#FF5722"
+            android:textColor="#FFFFFF" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Commande Shell (%d = KeyCode) :"
+            android:textColor="#BBBBBB" />
+
+        <EditText
+            android:id="@+id/editShellCmd"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="input keyevent %d"
+            android:textColor="#FFFFFF" />
+
+        <Button
+            android:id="@+id/btnSave"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="Enregistrer et Appliquer en direct" />
+    </LinearLayout>
+</ScrollView>

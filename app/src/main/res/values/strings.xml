@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">RadialKey Overlay</string>
+    <string name="acc_desc">Affiche le menu radial par-dessus les applications et simule les touches clavier.</string>
+</resources>
