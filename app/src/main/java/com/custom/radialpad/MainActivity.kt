@@ -4,6 +4,8 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
@@ -77,6 +79,45 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnAccService).setOnClickListener {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
+
+        // Renommage en direct du profil pendant la frappe
+        editProfileName.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                if (isUpdatingUi) return
+                val p = profiles.getOrNull(activeProfileIdx) ?: return
+                val newName = s.toString()
+                if (newName.isNotBlank() && p.name != newName) {
+                    p.name = newName
+                    val pNames = profiles.map { it.name }
+                    val currentPos = spinnerProfiles.selectedItemPosition
+                    spinnerProfiles.adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, pNames)
+                    spinnerProfiles.setSelection(currentPos, false)
+                    pushLiveUpdate()
+                }
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
+
+        // Renommage en direct du bouton pendant la frappe
+        editButtonName.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                if (isUpdatingUi) return
+                val p = profiles.getOrNull(activeProfileIdx) ?: return
+                val b = p.buttons.getOrNull(activeButtonIdx) ?: return
+                val newName = s.toString()
+                if (newName.isNotBlank() && b.name != newName) {
+                    b.name = newName
+                    val bNames = p.buttons.map { it.name }
+                    val currentPos = spinnerButtons.selectedItemPosition
+                    spinnerButtons.adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, bNames)
+                    spinnerButtons.setSelection(currentPos, false)
+                    pushLiveUpdate()
+                }
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
 
         findViewById<Button>(R.id.btnPickInnerKeys).setOnClickListener {
             KeyPickerDialog(this, editInnerKeys.text.toString().trim()) { pickedKey ->
@@ -230,11 +271,9 @@ class MainActivity : AppCompatActivity() {
     private fun saveCurrentFieldsToMemory() {
         syncPositionsFromDisk()
         val p = profiles.getOrNull(activeProfileIdx) ?: return
-        p.name = editProfileName.text.toString().ifBlank { "Profil" }
         p.shellCmd = editShellCmd.text.toString().ifBlank { "input keyevent %d" }
 
         val b = p.buttons.getOrNull(activeButtonIdx) ?: return
-        b.name = editButtonName.text.toString().ifBlank { "Bouton" }
         b.centerLabel = editCenterLabel.text.toString().ifBlank { "❖" }
         b.innerKeys = editInnerKeys.text.toString()
         b.enableOuterRing = chkOuterRing.isChecked
