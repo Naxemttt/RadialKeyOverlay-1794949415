@@ -15,7 +15,7 @@ import android.view.accessibility.AccessibilityEvent
 class RadialAccessibilityService : AccessibilityService() {
 
     private data class OverlayInstance(
-        val config: RadialButtonConfig,
+        var config: RadialButtonConfig,
         val view: RadialMenuView,
         val params: WindowManager.LayoutParams
     )
@@ -27,7 +27,7 @@ class RadialAccessibilityService : AccessibilityService() {
 
     private val updateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            rebuildOverlays()
+            syncOverlaysInPlace()
         }
     }
 
@@ -41,7 +41,7 @@ class RadialAccessibilityService : AccessibilityService() {
         } else {
             registerReceiver(updateReceiver, filter)
         }
-        rebuildOverlays()
+        syncOverlaysInPlace()
     }
 
     private fun dpToEvenPx(dp: Int): Int {
@@ -49,22 +49,9 @@ class RadialAccessibilityService : AccessibilityService() {
         return if (px % 2 == 0) px else px + 1
     }
 
-    private fun clearAllOverlays() {
-        overlays.forEach {
-            try { windowManager.removeView(it.view) } catch (_: Exception) {}
-        }
-        overlays.clear()
-        wheelRenderOverlay?.let {
-            try { windowManager.removeView(it) } catch (_: Exception) {}
-        }
-        wheelRenderOverlay = null
-    }
-
-    private fun rebuildOverlays() {
-        clearAllOverlays()
-        val (activeIdx, profiles) = ConfigManager.loadAll(this)
-        val activeProfile = profiles[activeIdx]
-        currentShellCmd = activeProfile.shellCmd
+    private fun ensureRenderOverlay(): WheelRenderOverlayView {
+        val existing = wheelRenderOverlay
+        if (existing != null) return existing
 
         val overlayType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -87,61 +74,110 @@ class RadialAccessibilityService : AccessibilityService() {
             gravity = Gravity.TOP or Gravity.START
             windowAnimations = 0
         }
-
-        activeProfile.buttons.forEach { btnConfig ->
-            val btnSize = dpToEvenPx(btnConfig.buttonSizeDp)
-            val params = WindowManager.LayoutParams(
-                btnSize, btnSize,
-                overlayType,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
-                        WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
-                PixelFormat.TRANSLUCENT
-            ).apply {
-                gravity = Gravity.TOP or Gravity.START
-                x = btnConfig.x
-                y = btnConfig.y
-                windowAnimations = 0
-            }
-
-            lateinit var radialView: RadialMenuView
-            radialView = RadialMenuView(
-                context = this,
-                config = btnConfig,
-                wheelRenderer = renderView,
-                onKeySelected = { keySpec ->
-                    KeyInjector.triggerKey(this, keySpec, currentShellCmd)
-                },
-                onMoveOverlay = { dx, dy ->
-                    btnConfig.x += dx
-                    btnConfig.y += dy
-                    params.x = btnConfig.x
-                    params.y = btnConfig.y
-                    windowManager.updateViewLayout(radialView, params)
-                },
-                onMoveFinished = {
-                    // Sauvegarde persistante des nouvelles coordonnées X/Y dès qu'on relâche le déplacement
-                    val (latestIdx, latestProfiles) = ConfigManager.loadAll(this)
-                    val targetBtn = latestProfiles.getOrNull(latestIdx)?.buttons?.find { it.id == btnConfig.id }
-                    if (targetBtn != null) {
-                        targetBtn.x = btnConfig.x
-                        targetBtn.y = btnConfig.y
-                        ConfigManager.saveAll(this, latestIdx, latestProfiles)
-                    } else {
-                        ConfigManager.saveAll(this, activeIdx, profiles)
-                    }
-                }
-            )
-
-            radialView.syncFromConfig(resources.displayMetrics.density)
-            windowManager.addView(radialView, params)
-            overlays.add(OverlayInstance(btnConfig, radialView, params))
-        }
-
-        // Ajouté en dernier pour être dessiné au-dessus de tous les boutons quand activé
         windowManager.addView(renderView, renderParams)
         wheelRenderOverlay = renderView
+        return renderView
+    }
+
+    // Met à jour les boutons existants sans les supprimer (Zéro clignotement !)
+    private fun syncOverlaysInPlace() {
+        val (activeIdx, profiles) = ConfigManager.loadAll(this)
+        val activeProfile = profiles[activeIdx]
+        currentShellCmd = activeProfile.shellCmd
+
+        val renderView = ensureRenderOverlay()
+        val desiredConfigs = activeProfile.buttons
+        val desiredIds = desiredConfigs.map { it.id }.toSet()
+
+        // 1. Supprime uniquement les boutons qui n'existent plus dans ce profil
+        val iterator = overlays.iterator()
+        while (iterator.hasNext()) {
+            val item = iterator.next()
+            if (item.config.id !in desiredIds) {
+                try { windowManager.removeView(item.view) } catch (_: Exception) {}
+                iterator.remove()
+            }
+        }
+
+        val overlayType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        else
+            @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE
+
+        // 2. Met à jour les boutons existants ou ajoute les nouveaux
+        desiredConfigs.forEach { btnConfig ->
+            val existing = overlays.find { it.config.id == btnConfig.id }
+            val btnSize = dpToEvenPx(btnConfig.buttonSizeDp)
+
+            if (existing != null) {
+                existing.config = btnConfig
+                existing.view.config = btnConfig
+                existing.view.syncFromConfig(resources.displayMetrics.density)
+
+                if (!existing.view.isMoveMode && !existing.view.isExpanded) {
+                    var changed = false
+                    if (existing.params.width != btnSize || existing.params.height != btnSize) {
+                        existing.params.width = btnSize
+                        existing.params.height = btnSize
+                        changed = true
+                    }
+                    if (existing.params.x != btnConfig.x || existing.params.y != btnConfig.y) {
+                        existing.params.x = btnConfig.x
+                        existing.params.y = btnConfig.y
+                        changed = true
+                    }
+                    if (changed) {
+                        windowManager.updateViewLayout(existing.view, existing.params)
+                    }
+                }
+            } else {
+                val params = WindowManager.LayoutParams(
+                    btnSize, btnSize,
+                    overlayType,
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+                    PixelFormat.TRANSLUCENT
+                ).apply {
+                    gravity = Gravity.TOP or Gravity.START
+                    x = btnConfig.x
+                    y = btnConfig.y
+                    windowAnimations = 0
+                }
+
+                lateinit var radialView: RadialMenuView
+                radialView = RadialMenuView(
+                    context = this,
+                    config = btnConfig,
+                    wheelRenderer = renderView,
+                    onKeySelected = { keySpec ->
+                        KeyInjector.triggerKey(this, keySpec, currentShellCmd)
+                    },
+                    onMoveOverlay = { dx, dy ->
+                        radialView.config.x += dx
+                        radialView.config.y += dy
+                        params.x = radialView.config.x
+                        params.y = radialView.config.y
+                        windowManager.updateViewLayout(radialView, params)
+                    },
+                    onMoveFinished = {
+                        val (latestIdx, latestProfiles) = ConfigManager.loadAll(this)
+                        val targetBtn = latestProfiles.getOrNull(latestIdx)?.buttons?.find { it.id == radialView.config.id }
+                        if (targetBtn != null) {
+                            targetBtn.x = radialView.config.x
+                            targetBtn.y = radialView.config.y
+                            ConfigManager.saveAll(this, latestIdx, latestProfiles)
+                        }
+                    }
+                )
+
+                radialView.syncFromConfig(resources.displayMetrics.density)
+                windowManager.addView(radialView, params)
+                overlays.add(OverlayInstance(btnConfig, radialView, params))
+            }
+        }
+        renderView.invalidate()
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
@@ -150,6 +186,13 @@ class RadialAccessibilityService : AccessibilityService() {
     override fun onDestroy() {
         super.onDestroy()
         try { unregisterReceiver(updateReceiver) } catch (_: Exception) {}
-        clearAllOverlays()
+        overlays.forEach {
+            try { windowManager.removeView(it.view) } catch (_: Exception) {}
+        }
+        overlays.clear()
+        wheelRenderOverlay?.let {
+            try { windowManager.removeView(it) } catch (_: Exception) {}
+        }
+        wheelRenderOverlay = null
     }
 }

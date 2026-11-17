@@ -13,7 +13,7 @@ class MainActivity : AppCompatActivity() {
     private var profiles = mutableListOf<RadialProfile>()
     private var activeProfileIdx = 0
     private var activeButtonIdx = 0
-    private var suppressSpinnerEvents = false
+    private var isUpdatingUi = false
 
     private lateinit var spinnerProfiles: Spinner
     private lateinit var editProfileName: EditText
@@ -78,7 +78,8 @@ class MainActivity : AppCompatActivity() {
 
         spinnerProfiles.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                if (suppressSpinnerEvents) return
+                // Bloque toute boucle infinie si la position n'a pas réellement changé
+                if (isUpdatingUi || position == activeProfileIdx) return
                 saveCurrentFieldsToMemory()
                 activeProfileIdx = position
                 activeButtonIdx = 0
@@ -90,7 +91,7 @@ class MainActivity : AppCompatActivity() {
 
         spinnerButtons.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                if (suppressSpinnerEvents) return
+                if (isUpdatingUi || position == activeButtonIdx) return
                 saveCurrentFieldsToMemory()
                 activeButtonIdx = position
                 populateButtonFields()
@@ -142,10 +143,18 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        seekButtonSize.setOnSeekBarChangeListener(simpleSeek { txtButtonSize.text = "Taille bouton central : ${it.coerceAtLeast(30)} dp" })
-        seekInnerRadius.setOnSeekBarChangeListener(simpleSeek { txtInnerRadius.text = "Rayon Anneau 1 : ${it.coerceAtLeast(80)} dp" })
-        seekOuterRadius.setOnSeekBarChangeListener(simpleSeek { txtOuterRadius.text = "Rayon Anneau 2 (Externe) : ${it.coerceAtLeast(130)} dp" })
-        seekOpacity.setOnSeekBarChangeListener(simpleSeek { txtOpacity.text = "Opacité : ${it.coerceAtLeast(10)}%" })
+        // Mise à jour en direct quand on lâche un curseur (permet de voir la taille/opacité directement dans l'app)
+        seekButtonSize.setOnSeekBarChangeListener(liveSeek { txtButtonSize.text = "Taille bouton central : ${it.coerceAtLeast(30)} dp" })
+        seekInnerRadius.setOnSeekBarChangeListener(liveSeek { txtInnerRadius.text = "Rayon Anneau 1 : ${it.coerceAtLeast(80)} dp" })
+        seekOuterRadius.setOnSeekBarChangeListener(liveSeek { txtOuterRadius.text = "Rayon Anneau 2 (Externe) : ${it.coerceAtLeast(130)} dp" })
+        seekOpacity.setOnSeekBarChangeListener(liveSeek { txtOpacity.text = "Opacité : ${it.coerceAtLeast(10)}%" })
+
+        chkOuterRing.setOnCheckedChangeListener { _, _ ->
+            if (!isUpdatingUi) {
+                saveCurrentFieldsToMemory()
+                pushLiveUpdate()
+            }
+        }
 
         findViewById<Button>(R.id.btnSave).setOnClickListener {
             saveCurrentFieldsToMemory()
@@ -159,7 +168,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Synchronise les positions X/Y si l'utilisateur a déplacé les boutons sur l'écran pendant que l'app était en arrière-plan
         syncPositionsFromDisk()
     }
 
@@ -175,10 +183,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun simpleSeek(onChange: (Int) -> Unit) = object : SeekBar.OnSeekBarChangeListener {
-        override fun onProgressChanged(s: SeekBar?, p: Int, b: Boolean) { onChange(p) }
+    private fun liveSeek(onChange: (Int) -> Unit) = object : SeekBar.OnSeekBarChangeListener {
+        override fun onProgressChanged(s: SeekBar?, p: Int, fromUser: Boolean) {
+            onChange(p)
+        }
         override fun onStartTrackingTouch(s: SeekBar?) {}
-        override fun onStopTrackingTouch(s: SeekBar?) {}
+        override fun onStopTrackingTouch(s: SeekBar?) {
+            if (!isUpdatingUi) {
+                saveCurrentFieldsToMemory()
+                pushLiveUpdate()
+            }
+        }
     }
 
     private fun saveCurrentFieldsToMemory() {
@@ -203,10 +218,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refreshSpinnersAndFields() {
-        suppressSpinnerEvents = true
+        isUpdatingUi = true
         val pNames = profiles.map { it.name }
         spinnerProfiles.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, pNames)
-        spinnerProfiles.setSelection(activeProfileIdx)
+        spinnerProfiles.setSelection(activeProfileIdx, false)
 
         val currentProfile = profiles[activeProfileIdx]
         editProfileName.setText(currentProfile.name)
@@ -215,13 +230,15 @@ class MainActivity : AppCompatActivity() {
         val bNames = currentProfile.buttons.map { it.name }
         spinnerButtons.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, bNames)
         activeButtonIdx = activeButtonIdx.coerceIn(0, currentProfile.buttons.size - 1)
-        spinnerButtons.setSelection(activeButtonIdx)
+        spinnerButtons.setSelection(activeButtonIdx, false)
 
         populateButtonFields()
-        suppressSpinnerEvents = false
+        spinnerProfiles.post { isUpdatingUi = false }
     }
 
     private fun populateButtonFields() {
+        val wasUpdating = isUpdatingUi
+        isUpdatingUi = true
         val b = profiles[activeProfileIdx].buttons[activeButtonIdx]
         editButtonName.setText(b.name)
         editInnerKeys.setText(b.innerKeys)
@@ -239,6 +256,7 @@ class MainActivity : AppCompatActivity() {
         txtOpacity.text = "Opacité : ${b.opacity}%"
         editMainColor.setText(b.mainColor)
         editAccentColor.setText(b.accentColor)
+        isUpdatingUi = wasUpdating
     }
 
     private fun pushLiveUpdate() {
