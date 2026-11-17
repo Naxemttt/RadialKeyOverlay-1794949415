@@ -35,9 +35,8 @@ object KeyInjector {
         "LEFT" to KeyEvent.KEYCODE_DPAD_LEFT, "RIGHT" to KeyEvent.KEYCODE_DPAD_RIGHT,
         "SHIFT" to KeyEvent.KEYCODE_SHIFT_LEFT, "CTRL" to KeyEvent.KEYCODE_CTRL_LEFT,
         "ALT" to KeyEvent.KEYCODE_ALT_LEFT,
-        "HOME" to KeyEvent.KEYCODE_HOME, "END" to KeyEvent.KEYCODE_END,
-        "INSERT" to KeyEvent.KEYCODE_INSERT, "PAGE_UP" to KeyEvent.KEYCODE_PAGE_UP,
-        "PAGE_DOWN" to KeyEvent.KEYCODE_PAGE_DOWN,
+        "HOME" to KeyEvent.KEYCODE_MOVE_HOME,
+        "PAGE_UP" to KeyEvent.KEYCODE_PAGE_UP, "PAGE_DOWN" to KeyEvent.KEYCODE_PAGE_DOWN,
         "NUMPAD_0" to KeyEvent.KEYCODE_NUMPAD_0, "NUMPAD_1" to KeyEvent.KEYCODE_NUMPAD_1,
         "NUMPAD_2" to KeyEvent.KEYCODE_NUMPAD_2, "NUMPAD_3" to KeyEvent.KEYCODE_NUMPAD_3,
         "NUMPAD_4" to KeyEvent.KEYCODE_NUMPAD_4, "NUMPAD_5" to KeyEvent.KEYCODE_NUMPAD_5,
@@ -53,7 +52,6 @@ object KeyInjector {
         val androidKeyCodes = parts.mapNotNull { keyMap[it] }
 
         thread {
-            // 1. Injection via commande Shell (input keyevent) ou chaîne de touches (ex: SHIFT+1)
             if (androidKeyCodes.isNotEmpty() && shellTemplate.isNotBlank()) {
                 val fullCmd = androidKeyCodes.joinToString(" && ") { code -> String.format(shellTemplate, code) }
                 try {
@@ -62,8 +60,6 @@ object KeyInjector {
                     try { Runtime.getRuntime().exec(arrayOf("sh", "-c", fullCmd)).waitFor() } catch (_: Exception) {}
                 }
             }
-
-            // 2. Diffusion UDP locale sur 127.0.0.1:9999 (pour scripts Python / X11 / xdotool / DroidDeck)
             try {
                 val socket = DatagramSocket()
                 val codeStr = androidKeyCodes.joinToString("+")
@@ -74,7 +70,6 @@ object KeyInjector {
             } catch (_: Exception) {}
         }
 
-        // 3. Fallback Accessibilité direct (uniquement si c'est un caractère simple ou alphanumérique)
         val root = service.rootInActiveWindow
         val focused = root?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
         if (focused != null && cleanSpec.length == 1 && androidKeyCodes.isNotEmpty()) {
