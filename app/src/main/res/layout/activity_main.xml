@@ -13,7 +13,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="RadialKey Overlay Pro v2.0"
+            android:text="RadialKey Overlay Pro v2.5"
             android:textColor="#FFFFFF"
             android:textSize="21sp"
             android:textStyle="bold"
@@ -125,7 +125,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
-            android:text="Anneau 1 (Format Label:Touche ou Touche seule) :"
+            android:text="Anneau 1 (Format Label:TOUCHE_CLAVIER) :"
             android:textColor="#BBBBBB" />
 
         <EditText
@@ -133,7 +133,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textColor="#FFFFFF"
-            android:hint="Ex: ⚡:1, 🔥:2, 🛡️:3, 🐺:4, Soin:F1" />
+            android:hint="Ex: ⚡:F1, 🔥:F2, 🛡️:1, Sac:B, Monture:SHIFT+P" />
 
         <CheckBox
             android:id="@+id/chkOuterRing"
@@ -148,13 +148,13 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textColor="#FFFFFF"
-            android:hint="Ex: S1:SHIFT+1, S2:SHIFT+2, Sac:B, Carte:M" />
+            android:hint="Ex: S1:CTRL+1, S2:CTRL+2, Carte:M, ESC:ESC" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:text="Action sur Clic Court au Centre (vide = aucune) :"
+            android:text="Action sur Clic Court au Centre :"
             android:textColor="#BBBBBB" />
 
         <EditText
@@ -162,13 +162,21 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textColor="#FFFFFF"
-            android:hint="Ex: SPACE ou TAB" />
+            android:hint="Ex: SPACE, TAB ou ENTER" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Touches clavier reconnues : 0-9, A-Z, F1-F12, SPACE, ESC, TAB, ENTER, BACKSPACE, UP, DOWN, LEFT, RIGHT, SHIFT+..., CTRL+..."
+            android:textColor="#777777"
+            android:textSize="11sp" />
 
         <CheckBox
             android:id="@+id/chkQuickFlick"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="6dp"
             android:text="Mode Quick-Flick (déclenche au bord sans relâcher)"
             android:textColor="#FFFFFF" />
 

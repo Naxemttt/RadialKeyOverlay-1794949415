@@ -30,10 +30,19 @@ object KeyInjector {
         "F10" to KeyEvent.KEYCODE_F10, "F11" to KeyEvent.KEYCODE_F11, "F12" to KeyEvent.KEYCODE_F12,
         "SPACE" to KeyEvent.KEYCODE_SPACE, "ENTER" to KeyEvent.KEYCODE_ENTER,
         "ESC" to KeyEvent.KEYCODE_ESCAPE, "TAB" to KeyEvent.KEYCODE_TAB,
+        "BACKSPACE" to KeyEvent.KEYCODE_DEL, "DELETE" to KeyEvent.KEYCODE_FORWARD_DEL,
         "UP" to KeyEvent.KEYCODE_DPAD_UP, "DOWN" to KeyEvent.KEYCODE_DPAD_DOWN,
         "LEFT" to KeyEvent.KEYCODE_DPAD_LEFT, "RIGHT" to KeyEvent.KEYCODE_DPAD_RIGHT,
         "SHIFT" to KeyEvent.KEYCODE_SHIFT_LEFT, "CTRL" to KeyEvent.KEYCODE_CTRL_LEFT,
-        "ALT" to KeyEvent.KEYCODE_ALT_LEFT
+        "ALT" to KeyEvent.KEYCODE_ALT_LEFT,
+        "HOME" to KeyEvent.KEYCODE_HOME, "END" to KeyEvent.KEYCODE_END,
+        "INSERT" to KeyEvent.KEYCODE_INSERT, "PAGE_UP" to KeyEvent.KEYCODE_PAGE_UP,
+        "PAGE_DOWN" to KeyEvent.KEYCODE_PAGE_DOWN,
+        "NUMPAD_0" to KeyEvent.KEYCODE_NUMPAD_0, "NUMPAD_1" to KeyEvent.KEYCODE_NUMPAD_1,
+        "NUMPAD_2" to KeyEvent.KEYCODE_NUMPAD_2, "NUMPAD_3" to KeyEvent.KEYCODE_NUMPAD_3,
+        "NUMPAD_4" to KeyEvent.KEYCODE_NUMPAD_4, "NUMPAD_5" to KeyEvent.KEYCODE_NUMPAD_5,
+        "NUMPAD_6" to KeyEvent.KEYCODE_NUMPAD_6, "NUMPAD_7" to KeyEvent.KEYCODE_NUMPAD_7,
+        "NUMPAD_8" to KeyEvent.KEYCODE_NUMPAD_8, "NUMPAD_9" to KeyEvent.KEYCODE_NUMPAD_9
     )
 
     fun triggerKey(service: AccessibilityService, rawSpec: String, shellTemplate: String) {
@@ -41,20 +50,23 @@ object KeyInjector {
         if (cleanSpec.isEmpty()) return
 
         val parts = cleanSpec.split("+").map { it.trim() }.filter { it.isNotEmpty() }
-        val codes = parts.mapNotNull { keyMap[it] }
+        val androidKeyCodes = parts.mapNotNull { keyMap[it] }
 
         thread {
-            if (codes.isNotEmpty() && shellTemplate.isNotBlank()) {
-                val fullCmd = codes.joinToString(" && ") { code -> String.format(shellTemplate, code) }
+            // 1. Injection via commande Shell (input keyevent) ou chaîne de touches (ex: SHIFT+1)
+            if (androidKeyCodes.isNotEmpty() && shellTemplate.isNotBlank()) {
+                val fullCmd = androidKeyCodes.joinToString(" && ") { code -> String.format(shellTemplate, code) }
                 try {
                     Runtime.getRuntime().exec(arrayOf("su", "-c", fullCmd)).waitFor()
                 } catch (e: Exception) {
                     try { Runtime.getRuntime().exec(arrayOf("sh", "-c", fullCmd)).waitFor() } catch (_: Exception) {}
                 }
             }
+
+            // 2. Diffusion UDP locale sur 127.0.0.1:9999 (pour scripts Python / X11 / xdotool / DroidDeck)
             try {
                 val socket = DatagramSocket()
-                val codeStr = codes.joinToString("+")
+                val codeStr = androidKeyCodes.joinToString("+")
                 val payload = "KEY:$cleanSpec:$codeStr".toByteArray()
                 val packet = DatagramPacket(payload, payload.size, InetAddress.getByName("127.0.0.1"), 9999)
                 socket.send(packet)
@@ -62,9 +74,10 @@ object KeyInjector {
             } catch (_: Exception) {}
         }
 
+        // 3. Fallback Accessibilité direct (uniquement si c'est un caractère simple ou alphanumérique)
         val root = service.rootInActiveWindow
         val focused = root?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-        if (focused != null && cleanSpec.length == 1) {
+        if (focused != null && cleanSpec.length == 1 && androidKeyCodes.isNotEmpty()) {
             val currentText = focused.text?.toString() ?: ""
             val args = Bundle().apply {
                 putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, currentText + cleanSpec)
