@@ -5,7 +5,6 @@ import android.graphics.*
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
-import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
 import kotlin.math.*
@@ -29,6 +28,7 @@ class RadialMenuView(
     private var selectedIndex = -1
     private var rawStartX = 0f
     private var rawStartY = 0f
+    private var lastDownTime = 0L
 
     private val paintFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val paintStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -44,15 +44,6 @@ class RadialMenuView(
     }
 
     private val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-
-    private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
-        override fun onDoubleTap(e: MotionEvent): Boolean {
-            isMoveMode = true
-            vibrate(40)
-            invalidate()
-            return true
-        }
-    })
 
     private fun vibrate(ms: Long) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -77,7 +68,7 @@ class RadialMenuView(
             canvas.drawCircle(cx, cy, baseRadius - 2f, paintStroke)
             paintText.textSize = baseRadius * 0.6f
             val yPos = cy - (paintText.descent() + paintText.ascent()) / 2
-            canvas.drawText("❖", cx, yPos, paintText)
+            canvas.drawText(if (isMoveMode) "✥" else "❖", cx, yPos, paintText)
         } else {
             val count = keys.size.coerceAtLeast(1)
             val sweepAngle = 360f / count
@@ -100,25 +91,37 @@ class RadialMenuView(
                 canvas.drawText(keys[i], tx, ty, paintText)
             }
 
-            paintFill.color = Color.DKGRAY
-            paintFill.alpha = 230
+            // Bouton central exactement au même endroit et à la même taille
+            paintFill.color = mainColor
+            paintFill.alpha = (alphaRatio * 255).toInt()
             canvas.drawCircle(cx, cy, baseRadius, paintFill)
-            canvas.drawCircle(cx, cy, baseRadius, paintStroke)
+            canvas.drawCircle(cx, cy, baseRadius - 2f, paintStroke)
+            paintText.textSize = baseRadius * 0.6f
+            val yPos = cy - (paintText.descent() + paintText.ascent()) / 2
+            canvas.drawText("❖", cx, yPos, paintText)
         }
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        gestureDetector.onTouchEvent(event)
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
+                val now = System.currentTimeMillis()
                 rawStartX = event.rawX
                 rawStartY = event.rawY
                 selectedIndex = -1
-                if (!isMoveMode) {
+
+                // Double-tap (< 320ms) = Mode déplacement
+                if (now - lastDownTime < 320L) {
+                    isMoveMode = true
+                    isExpanded = false
+                    onExpandChanged(false)
+                    vibrate(45)
+                } else {
+                    isMoveMode = false
                     isExpanded = true
                     onExpandChanged(true)
-                    vibrate(15)
                 }
+                lastDownTime = now
                 invalidate()
                 return true
             }
@@ -126,15 +129,19 @@ class RadialMenuView(
                 if (isMoveMode) {
                     val dx = (event.rawX - rawStartX).toInt()
                     val dy = (event.rawY - rawStartY).toInt()
-                    rawStartX = event.rawX
-                    rawStartY = event.rawY
-                    onMoveOverlay(dx, dy)
+                    if (abs(dx) > 1 || abs(dy) > 1) {
+                        rawStartX = event.rawX
+                        rawStartY = event.rawY
+                        onMoveOverlay(dx, dy)
+                    }
                 } else if (isExpanded) {
-                    val cx = width / 2f
-                    val cy = height / 2f
-                    val dx = event.x - cx
-                    val dy = event.y - cy
-                    if (hypot(dx, dy) > buttonSizePx / 2f) {
+                    // Calcul basé uniquement sur la distance réelle glissée par le doigt à l'écran
+                    val dx = event.rawX - rawStartX
+                    val dy = event.rawY - rawStartY
+                    val slideDist = hypot(dx, dy)
+                    val deadZone = (buttonSizePx * 0.55f).coerceAtLeast(35f)
+
+                    if (slideDist > deadZone) {
                         val count = keys.size.coerceAtLeast(1)
                         val sliceAngle = 360f / count
                         var angle = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble())).toFloat()
@@ -155,6 +162,7 @@ class RadialMenuView(
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 if (isMoveMode) {
                     isMoveMode = false
+                    vibrate(20)
                 } else if (isExpanded) {
                     if (selectedIndex in keys.indices) {
                         vibrate(25)

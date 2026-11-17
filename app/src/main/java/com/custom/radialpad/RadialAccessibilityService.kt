@@ -31,6 +31,10 @@ class RadialAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+        val prefs = getSharedPreferences("radial_prefs", Context.MODE_PRIVATE)
+        savedCenterX = prefs.getInt("pos_x", 300)
+        savedCenterY = prefs.getInt("pos_y", 600)
+
         val filter = IntentFilter("com.custom.radialpad.UPDATE_CONFIG")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(updateReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
@@ -41,23 +45,30 @@ class RadialAccessibilityService : AccessibilityService() {
         loadPreferencesAndUpdate()
     }
 
-    private fun dpToPx(dp: Int): Int = (dp * resources.displayMetrics.density).toInt()
+    // Force toujours un nombre pair de pixels pour éviter tout décalage d'arrondi de 1px au centre
+    private fun dpToEvenPx(dp: Int): Int {
+        val px = (dp * resources.displayMetrics.density).toInt()
+        return if (px % 2 == 0) px else px + 1
+    }
 
     private fun createOverlay() {
+        val initialSize = dpToEvenPx(70)
         params = WindowManager.LayoutParams(
-            dpToPx(70), dpToPx(70),
+            initialSize, initialSize,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else
                 @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
             x = savedCenterX
             y = savedCenterY
+            windowAnimations = 0
         }
 
         radialView = RadialMenuView(
@@ -69,22 +80,28 @@ class RadialAccessibilityService : AccessibilityService() {
                 params.x = savedCenterX
                 params.y = savedCenterY
                 windowManager.updateViewLayout(radialView, params)
+                getSharedPreferences("radial_prefs", Context.MODE_PRIVATE).edit()
+                    .putInt("pos_x", savedCenterX)
+                    .putInt("pos_y", savedCenterY)
+                    .apply()
             },
             onExpandChanged = { expanded ->
                 val view = radialView ?: return@RadialMenuView
                 val btnSize = view.buttonSizePx.toInt()
-                val expandedSize = (view.menuRadiusPx * 2.2f).toInt()
+                var expandedSize = (view.menuRadiusPx * 2.1f).toInt()
+                if (expandedSize % 2 != 0) expandedSize += 1
+
                 if (expanded) {
                     val offset = (expandedSize - btnSize) / 2
-                    params.width = expandedSize
-                    params.height = expandedSize
                     params.x = savedCenterX - offset
                     params.y = savedCenterY - offset
+                    params.width = expandedSize
+                    params.height = expandedSize
                 } else {
-                    params.width = btnSize
-                    params.height = btnSize
                     params.x = savedCenterX
                     params.y = savedCenterY
+                    params.width = btnSize
+                    params.height = btnSize
                 }
                 windowManager.updateViewLayout(view, params)
             }
@@ -104,8 +121,8 @@ class RadialAccessibilityService : AccessibilityService() {
 
         radialView?.let { view ->
             view.keys = keysStr.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-            view.buttonSizePx = dpToPx(btnDp).toFloat()
-            view.menuRadiusPx = dpToPx(radiusDp).toFloat()
+            view.buttonSizePx = dpToEvenPx(btnDp).toFloat()
+            view.menuRadiusPx = dpToEvenPx(radiusDp).toFloat()
             view.alphaRatio = opacity / 100f
             try { view.mainColor = Color.parseColor(mainHex) } catch (_: Exception) {}
             try { view.accentColor = Color.parseColor(accentHex) } catch (_: Exception) {}
